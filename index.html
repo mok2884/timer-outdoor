@@ -215,7 +215,7 @@ function fit(){
   else if(role==='cue'){dg.style.transform='scale(1)';const r=dg.getBoundingClientRect();dg.style.transform=`scale(${Math.min(innerWidth*.88/r.width,innerHeight*.88/r.height)*.7})`}
   else{dg.style.transform='rotate(90deg) scale(1)';const r=dg.getBoundingClientRect();dg.style.transform=`rotate(90deg) scale(${Math.min(innerHeight*.88/r.width,innerWidth*.88/r.height)})`}
 }
-addEventListener('load',fit);addEventListener('resize',fit);setTimeout(fit,100);
+addEventListener('load',fit);if(role!=='cue')addEventListener('resize',fit);setTimeout(fit,100);
 if(document.fonts)document.fonts.ready.then(fit);
 </script>
 </body>
