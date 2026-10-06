@@ -229,9 +229,9 @@ setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
 
 /* 画面スリープ防止 */
 let wl=null;
-async function awake(){try{if('wakeLock' in navigator)wl=await navigator.wakeLock.request('screen')}catch(e){}}
+async function awake(){try{if('wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}else err('WL NONE')}catch(e){err('WL '+e.name)}}
 $('tap').onclick=()=>{$('tap').style.display='none';awake()};
-document.addEventListener('pointerdown',()=>{if(!wl)awake()},{once:true});
+document.addEventListener('pointerdown',()=>{if(!wl)awake()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true);if(role==='master'){ownerReady=false;ownerUi();goOffline(db);goOnline(db)}}});
 
 /* 画面の拡大縮小 */
