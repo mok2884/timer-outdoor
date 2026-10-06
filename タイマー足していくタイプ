@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700;900&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{margin:0;font-family:sans-serif;background:#080d16;color:#e2e8f0;display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;overflow:hidden;overscroll-behavior:none}
+.container{text-align:center}
+#display{display:flex;align-items:center;justify-content:center;font-size:11rem;font-family:'DS-Digital',monospace;border:4px solid #fff;border-radius:20px;padding:35px 55px;background:#000;margin-bottom:20px}
+.digit{width:80px;text-align:right;display:inline-block;margin:0 10px;font-style:italic;color:#ff4500}
+.separator{width:45px;text-align:center;display:inline-block;color:#f00;font-size:.8em;transform:translateX(6px)}
+button{padding:15px;font-size:18px;border:none;border-radius:8px;cursor:pointer;background:#334155;color:#fff}
+button:active{transform:scale(.95)}
+#status{font-size:14px;font-weight:bold;padding:5px 10px;border-radius:5px;display:inline-block;margin-top:10px}
+.ok{color:#22c55e;border:1px solid #22c55e}.wait{color:#eab308;border:1px solid #eab308}.ng{color:#ef4444;border:1px solid #ef4444}
+#slaveLabel{font-size:34px;font-weight:900;font-family:Roboto,sans-serif}
+.rl{background:#334155;border:1px solid #475569;color:#cbd5e1;border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:5px}
+.m .rl{display:none}
+.m #display{font-size:7rem;padding:16px 20px;border-width:3px}
+.m .digit{width:50px;margin:0 5px}
+.m .separator{width:28px}
+.s .digit,.c .digit{margin:0 12px}
+.s .separator,.c .separator{font-size:1em;width:52px;font-weight:900}
+.s #dg,.c #dg{transform-origin:center;display:flex;flex-direction:column;align-items:center}
+.c #display{margin:0 auto 20px}
+#cueInfo{display:none;width:94%;height:78px;margin:10px auto 0;font-family:Roboto,sans-serif;font-weight:900}
+.c #cueInfo{display:block}
+#cueLabel{text-align:left;font-size:38px;font-weight:600;margin-bottom:4px}
+#cueTimeRow{display:flex;justify-content:space-between;align-items:baseline}
+#cueTargetTime{font-size:34px;font-weight:600}
+#cueRemain{font-size:50px;font-weight:700}
+#ui{display:none}.m #ui{display:block}
+#ctl{position:fixed;inset:0;background:rgba(15,23,42,.65);display:none;justify-content:center;align-items:center;z-index:9998;text-align:center;color:#fff;font-weight:bold;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+#ctlBtn{position:relative;overflow:hidden;border:4px solid #fff;border-radius:16px;padding:22px 40px;font-size:40px;line-height:1}
+#ctlFill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.4)}
+#ctlBtn span{position:relative}
+#inputPreview{font-size:32px;color:#94a3b8;margin-bottom:10px;font-family:monospace}
+.mainRow{display:flex;gap:16px;align-items:flex-start}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:280px}
+.keypad button{font-size:24px;font-weight:900;height:80px}
+.act{background:#475569}
+.set{background:#0f766e;font-size:16px!important}
+.rp{display:flex;flex-direction:column;gap:10px}
+.rz{height:80px;background:#556577;font-weight:900}
+.go{height:225px;background:#f8f8f4;color:#000;font-weight:900}
+.disabled{background:#334155!important;color:#94a3b8!important;cursor:not-allowed;opacity:.6}
+#cueMasterInfo{width:94%;height:40px;margin:6px auto 0;display:flex;align-items:baseline;font-family:Roboto,sans-serif;font-weight:900;gap:40px}
+#cml{font-size:20px;font-weight:400}#cmt{font-size:26px;font-weight:400}
+.cb{display:grid;grid-template-columns:repeat(3,86.67px) 100px 70px;gap:10px;margin-top:6px}
+.cb button{height:50px;padding:4px;font-size:18px;font-weight:900}
+.cb .clr{font-size:15px;font-weight:700}
+#mon{text-align:right;margin-top:8px;padding-right:4px;font-family:monospace;font-size:16px}
+#al{color:#555;font-weight:900;margin-right:12px}
+#sn{color:#666;cursor:pointer}
+*{touch-action:manipulation}
+</style>
+</head>
+<body>
+<div id="tap" style="position:fixed;inset:0;background:rgba(15,23,42,.8);display:none;justify-content:center;align-items:center;z-index:9999;cursor:pointer"><div style="color:#fff;font-size:30px;font-weight:bold;text-align:center">TAP HERE</div></div>
+<div id="ctl"><div><div id="ctlText" style="font-size:30px;margin-bottom:24px"></div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
+<div class="container">
+<div id="dg">
+<div style="width:100%;display:flex;justify-content:flex-end"><button class="rl" onclick="location.reload()">RELOAD</button></div>
+<div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div>
+<div id="slaveLabel">REAL TIME / TIMER</div>
+<div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--:--</span><span id="cueRemain">--:--</span></div></div>
+<div id="status" class="wait">CONNECTING...</div>
+</div>
+<div id="ui">
+<div id="inputPreview">--:--:--</div>
+<div class="mainRow">
+<div class="keypad">
+<button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button>
+<button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button>
+<button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button>
+<button class="act" onclick="clearInput()">CLR</button><button onclick="press(0)">0</button><button class="set" onclick="setTimer()">TIME SET</button>
+</div>
+<div class="rp"><button class="rz" onclick="resetTimer()">set ZERO</button><button class="go" onclick="toggleTimer()">START / STOP</button></div>
+</div>
+<div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--:--</span></div>
+<div class="cb">
+<button onclick="setCue('CM入り','#20E0D0')">CM入</button>
+<button onclick="setCue('曲入り','#20E0D0')">曲入</button>
+<button onclick="setCue('スタジオ戻り','#FFF02A')">戻り</button>
+<button class="clr" onclick="clearCue()">CUEクリア</button>
+<button id="lock" onclick="toggleLock()">🔓</button>
+</div>
+<div id="mon"><span id="al">CHECK SLAVE!</span><span id="sn" title="タップで子機の記録を消す">0 SLAVE</span></div>
+</div>
+</div>
+<video autoplay muted loop playsinline width="1" height="1"><source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4"></video>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getDatabase,ref,onValue,set,remove,serverTimestamp,goOffline,goOnline}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+const db=getDatabase(initializeApp({
+  apiKey:"AIzaSyBxjNwnUhrCtYa0Tlr0mnbRm3-3i7CZFX0",
+  authDomain:"broadcast-timer-da325.firebaseapp.com",
+  databaseURL:"https://broadcast-timer-da325-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"broadcast-timer-da325",
+  storageBucket:"broadcast-timer-da325.firebasestorage.app",
+  messagingSenderId:"937331375256",
+  appId:"1:937331375256:web:4d18dfd3c89744057d64ed"
+}));
+const P=new URLSearchParams(location.search);
+const ROOM='rooms/'+(P.get('room')||'tmr-8f3kQ2xZ7vLm').replace(/[.#$\[\]\/]/g,'');
+let did;try{did=localStorage.getItem('did');if(!did){did=Math.random().toString(36).slice(2,10);localStorage.setItem('did',did)}}catch(e){did=Math.random().toString(36).slice(2,10)}
+const R=p=>ref(db,ROOM+'/'+p);
+const $=id=>document.getElementById(id);
+const q=s=>document.querySelector(s);
+const p2=n=>String(n).padStart(2,'0');
+const fmt=t=>p2(Math.floor(t/3600))+':'+p2(Math.floor(t%3600/60))+':'+p2(t%60);
+const hms=s=>{s=s.padStart(6,'0');return s.slice(0,2)*3600+s.slice(2,4)*60+s.slice(4,6)*1};
+const role=new URLSearchParams(location.search).get('role');
+document.body.className=role==='master'?'m':role==='cue'?'c':'s';
+let off=null,T={running:false,base:0,value:0},CUE=null,lastBlink=-1,alive={},owner=null,ownerReady=false;
+let anchor=null,syncing=false,lastSync=0;
+const DBURL=db.app.options.databaseURL;
+const can=()=>role==='master'&&ownerReady&&owner===did;
+const now=()=>anchor?anchor.srv+(performance.now()-anchor.perf):Date.now()+off;
+const secs=()=>T.running?Math.max(0,Math.floor((now()-T.base)/1000)):T.value;
+function err(m){let e=$('err');if(!e){e=document.createElement('div');e.id='err';e.style.cssText='color:#94a3b8;font-size:14px;margin-top:6px;font-family:monospace';$('dg').appendChild(e)}e.textContent=new Date().toTimeString().slice(0,8)+' '+m}
+const bad=e=>err('ERR '+(e.code||e.message));
+const setSt=(t,c)=>{$('status').textContent=t;$('status').className=c};
+
+/* 接続と時計のずれ */
+onValue(ref(db,'.info/connected'),s=>{if(s.val()){setSt('CONNECTED','ok');resync(true);if(role==='master'&&!ownerReady)setTimeout(()=>{ownerReady=true;ownerUi()},1500)}else setSt('UNLINK','ng')});
+onValue(ref(db,'.info/serverTimeOffset'),s=>{off=s.val()});
+/* タイマーとCUEの受信 */
+onValue(R('timer'),s=>{const v=s.val()||{};T={running:!!v.running,base:v.base||0,value:v.value||0};ui();tick()},bad);
+onValue(R('cue'),s=>{CUE=s.val()},bad);
+onValue(R('alive'),s=>{alive=s.val()||{}},bad);
+/* 操作権 */
+onValue(R('owner'),s=>{owner=s.val();ownerReady=true;if(role==='master'&&owner===null)set(R('owner'),did).catch(bad);ownerUi()},bad);
+function ownerUi(){if(role!=='master')return;
+  $('ctl').style.display=can()?'none':'flex';
+  $('ctlText').textContent=ownerReady?'他の端末で操作中':'確認中…';
+  $('ctlBtn').style.display=ownerReady?'block':'none'}
+let lp=null;const fill=$('ctlFill');
+const rel=()=>{clearTimeout(lp);fill.style.transition='none';fill.style.width='0'};
+$('ctlBtn').onpointerdown=()=>{if(!ownerReady)return;fill.style.transition='width 1s linear';fill.style.width='100%';lp=setTimeout(()=>{set(R('owner'),did).catch(bad);rel()},1000)};
+['onpointerup','onpointerleave','onpointercancel'].forEach(e=>$('ctlBtn')[e]=rel);
+ownerUi();
+
+/* 表示 */
+function blink(){const s=document.querySelectorAll('.separator');
+  s.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
+  setTimeout(()=>s.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
+function drawCue(t){
+  const on=!!CUE&&CUE.target>t;
+  if(role==='master'){
+    $('cml').textContent=on?CUE.label:'--';$('cml').style.color=on?CUE.color:'#64748B';
+    $('cmt').textContent=on?fmt(CUE.target):'--:--:--';$('cmt').style.color=on?'#CBD5E1':'#64748B';
+  }else if(role==='cue'){
+    const r=on?CUE.target-t:0;
+    $('cueLabel').textContent=on?CUE.label:'--';$('cueLabel').style.color=on?CUE.color:'#64748B';
+    $('cueTargetTime').textContent=on?fmt(CUE.target):'--:--:--';$('cueTargetTime').style.color=on?'#e2e8f0':'#64748B';
+    $('cueRemain').textContent=on?p2(Math.floor(r/60))+':'+p2(r%60):'--:--';$('cueRemain').style.color=on?CUE.color:'#64748B';
+  }
+}
+function tick(){
+  if(off===null&&!anchor)return;
+  if(anchor&&Math.abs((Date.now()-anchor.date)-(performance.now()-anchor.perf))>700)resync();
+  const t=Math.min(secs(),359999);
+  const x=fmt(t).replace(/:/g,'');
+  document.querySelectorAll('#display .digit').forEach((d,i)=>d.textContent=x[i]);
+  if(role!=='master'&&t!==lastBlink){lastBlink=t;blink()}
+  if(can()&&CUE&&t>=CUE.target){CUE=null;set(R('cue'),null).catch(bad)}
+  drawCue(t);
+}
+setInterval(tick,100);
+
+/* 親機:操作 */
+let buf='',saved='',editing=false,locked=false;
+const wr=o=>set(R('timer'),o).catch(bad);
+function ui(){if(role!=='master')return;q('.rz').classList.toggle('disabled',T.running);q('.set').classList.toggle('disabled',T.running)}
+function preview(){const s=buf||saved;if(!s){$('inputPreview').textContent='--:--:--';return}const d=s.padStart(6,'0');$('inputPreview').textContent=d.slice(0,2)+':'+d.slice(2,4)+':'+d.slice(4,6)}
+function press(n){if(!editing){buf='';editing=true}if(buf.length<6){buf+=n;preview()}}
+function clearInput(){buf='';saved='';editing=false;preview()}
+function setTimer(){if(!can()||T.running||!buf)return;wr({running:false,value:hms(buf),base:0});saved=buf;editing=false;preview()}
+function resetTimer(){if(!can()||T.running)return;wr({running:false,value:0,base:0})}
+function toggleTimer(){if(!can()||locked||(off===null&&!anchor))return;
+  if(T.running)wr({running:false,value:secs(),base:0});
+  else wr({running:true,base:now()-T.value*1000,value:T.value})}
+function toggleLock(){locked=!locked;$('lock').textContent=locked?'🔒':'🔓';const g=q('.go');g.style.background=locked?'#334155':'#f8f8f4';g.style.color=locked?'#94a3b8':'#000'}
+function setCue(label,color){if(!can()||!buf)return;set(R('cue'),{label,color,target:hms(buf)}).catch(bad)}
+function clearCue(){if(!can())return;set(R('cue'),null).catch(bad)}
+Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue});
+
+/* 親機:子機の見張り(25秒以上連絡がなければ赤) */
+if(role==='master'){
+  $('sn').onclick=()=>remove(R('alive')).catch(bad);
+  setInterval(()=>{if(off===null&&!anchor)return;let n=0,ng=false;
+    for(const k in alive){const a=now()-alive[k];if(a<43200000){n++;if(a>25000)ng=true}}
+    $('al').style.color=ng?'#ff3030':'#555';$('sn').style.color=ng?'#ff3030':'#666';$('sn').textContent=n+' SLAVE'},1000);
+}
+/* 子機:10秒ごとに「生きています」を書く */
+if(role!=='master'){
+  let id;try{id=localStorage.getItem('sid-'+role);if(!id){id=role+'-'+Math.random().toString(36).slice(2,7);localStorage.setItem('sid-'+role,id)}}catch(e){id=role+'-x'}
+  const hb=()=>set(R('alive/'+id),serverTimestamp()).catch(bad);
+  hb();setInterval(hb,10000);
+  $('tap').style.display='flex';
+}
+
+/* 時計合わせ:サーバー時刻を3回測り、往復が一番速いものを採用。端末内部のストップウォッチで数える */
+function showSync(r){let e=$('sy');if(!e){e=document.createElement('div');e.id='sy';e.style.cssText='color:#475569;font-size:12px;margin-top:4px;font-family:monospace';$('dg').appendChild(e)}e.textContent=r<0?'SYNC SLOW':'SYNC '+Math.round(r)+'ms'}
+async function resync(force){
+  if(syncing||(!force&&performance.now()-lastSync<3000))return;
+  syncing=true;
+  try{
+    let best=null;
+    for(let i=0;i<3;i++){
+      const c=new AbortController(),to=setTimeout(()=>c.abort(),4000);
+      const t0=performance.now();
+      const r=await fetch(DBURL+'/'+ROOM+'/ping/'+did+'.json',{method:'PUT',body:'{".sv":"timestamp"}',signal:c.signal});
+      const S=await r.json();
+      clearTimeout(to);
+      const t1=performance.now(),d=Date.now();
+      if(typeof S!=='number')throw new Error('bad');
+      const rtt=t1-t0;
+      if(!best||rtt<best.rtt)best={rtt,srv:S+rtt/2,perf:t1,date:d};
+    }
+    if(best.rtt<1500){anchor=best;showSync(best.rtt)}else showSync(-1);
+  }catch(e){err('SYNC FAIL')}
+  syncing=false;lastSync=performance.now();
+}
+setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
+
+/* 画面スリープ防止 */
+let wl=null;
+async function awake(){try{if('wakeLock' in navigator)wl=await navigator.wakeLock.request('screen')}catch(e){}}
+$('tap').onclick=()=>{$('tap').style.display='none';awake()};
+document.addEventListener('pointerdown',()=>{if(!wl)awake()},{once:true});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true);if(role==='master'){ownerReady=false;ownerUi();goOffline(db);goOnline(db)}}});
+
+/* 画面の拡大縮小 */
+const dg=$('dg'),box=q('.container');
+function fit(){
+  if(role==='master'){box.style.transform='scale(1)';const r=box.getBoundingClientRect();box.style.transform=`scale(${Math.min(innerWidth*.92/r.width,innerHeight*.92/r.height)})`}
+  else if(role==='cue'){dg.style.transform='scale(1)';const r=dg.getBoundingClientRect();dg.style.transform=`scale(${Math.min(innerWidth*.88/r.width,innerHeight*.88/r.height)*.7})`}
+  else{dg.style.transform='rotate(90deg) scale(1)';const r=dg.getBoundingClientRect();dg.style.transform=`rotate(90deg) scale(${Math.min(innerHeight*.88/r.width,innerWidth*.88/r.height)})`}
+}
+addEventListener('load',fit);if(role!=='cue')addEventListener('resize',fit);setTimeout(fit,100);
+if(document.fonts)document.fonts.ready.then(fit);
+</script>
+</body>
+</html>
