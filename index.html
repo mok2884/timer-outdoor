@@ -3,11 +3,9 @@
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;700;900&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080d16">
-
-  
 <style>
 body{margin:0;font-family:sans-serif;background:#080d16;color:#e2e8f0;display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;overflow:hidden;overscroll-behavior:none}
 .container{text-align:center}
@@ -18,6 +16,7 @@ button{padding:15px;font-size:18px;border:none;border-radius:8px;cursor:pointer;
 button:active{transform:scale(.95)}
 #status{font-size:14px;font-weight:bold;padding:5px 10px;border-radius:5px;display:inline-block;margin-top:10px}
 .ok{color:#22c55e;border:1px solid #22c55e}.wait{color:#eab308;border:1px solid #eab308}.ng{color:#ef4444;border:1px solid #ef4444}
+.s .ok,.s .wait,.s .ng,.c .ok,.c .wait,.c .ng{color:#64748b;border:1px solid #334155}
 #slaveLabel{font-size:34px;font-weight:900;font-family:Roboto,sans-serif}
 .rl{background:#334155;border:1px solid #475569;color:#cbd5e1;border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:5px}
 .m .rl{display:none}
@@ -50,13 +49,15 @@ button:active{transform:scale(.95)}
 .go{height:225px;background:#f8f8f4;color:#000;font-weight:900}
 .disabled{background:#334155!important;color:#94a3b8!important;cursor:not-allowed;opacity:.6}
 #cueMasterInfo{width:94%;height:40px;margin:6px auto 0;display:flex;align-items:baseline;font-family:Roboto,sans-serif;font-weight:900;gap:40px}
-#cml{font-size:20px;font-weight:400}#cmt{font-size:26px;font-weight:400}
+#cml{font-size:20px;font-weight:700}#cmt{font-size:26px;font-weight:700}
+#cmr{margin-left:auto;font-size:20px;font-weight:300;color:#64748B}
 .cb{display:grid;grid-template-columns:repeat(3,86.67px) 100px 70px;gap:10px;margin-top:6px}
 .cb button{height:50px;padding:4px;font-size:18px;font-weight:900}
 .cb .clr{font-size:15px;font-weight:700}
 #mon{text-align:right;margin-top:8px;padding-right:4px;font-family:monospace;font-size:16px}
 #al{color:#555;font-weight:900;margin-right:12px}
 #sn{color:#666;cursor:pointer}
+.m #status{margin-top:0}
 *{touch-action:manipulation}
 </style>
 </head>
@@ -82,7 +83,7 @@ button:active{transform:scale(.95)}
 </div>
 <div class="rp"><button class="rz" onclick="resetTimer()">set ZERO</button><button class="go" onclick="toggleTimer()">START / STOP</button></div>
 </div>
-<div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--:--</span></div>
+<div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--:--</span><span id="cmr">--:--</span></div>
 <div class="cb">
 <button onclick="setCue('CM入り','#20E0D0')">CM入</button>
 <button onclick="setCue('曲入り','#20E0D0')">曲入</button>
@@ -90,7 +91,7 @@ button:active{transform:scale(.95)}
 <button class="clr" onclick="clearCue()">CUEクリア</button>
 <button id="lock" onclick="toggleLock()">🔓</button>
 </div>
-<div id="mon"><span id="al">CHECK SLAVE!</span><span id="sn" title="タップで子機の記録を消す">0 SLAVE</span></div>
+<div id="mon"></div>
 </div>
 </div>
 <video autoplay muted loop playsinline width="1" height="1"><source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4"></video>
@@ -123,9 +124,10 @@ const DBURL=db.app.options.databaseURL;
 const can=()=>role==='master'&&ownerReady&&owner===did;
 const now=()=>anchor?anchor.srv+(performance.now()-anchor.perf):Date.now()+off;
 const secs=()=>T.running?Math.max(0,Math.floor((now()-T.base)/1000)):T.value;
-function err(m){let e=$('err');if(!e){e=document.createElement('div');e.id='err';e.style.cssText='color:#94a3b8;font-size:14px;margin-top:6px;font-family:monospace';$('dg').appendChild(e)}e.textContent=new Date().toTimeString().slice(0,8)+' '+m}
+function err(m){if(role!=='master')return;let e=$('err');if(!e){e=document.createElement('div');e.id='err';e.style.cssText='color:#94a3b8;font-size:14px;margin-top:6px;font-family:monospace';$('dg').appendChild(e)}e.textContent=new Date().toTimeString().slice(0,8)+' '+m}
 const bad=e=>err('ERR '+(e.code||e.message));
 const setSt=(t,c)=>{$('status').textContent=t;$('status').className=c};
+if(role==='master')$('mon').appendChild($('status'));
 
 /* 接続と時計のずれ */
 onValue(ref(db,'.info/connected'),s=>{if(s.val()){setSt('CONNECTED','ok');resync(true);if(role==='master'&&!ownerReady)setTimeout(()=>{ownerReady=true;ownerUi()},1500)}else setSt('UNLINK','ng')});
@@ -133,7 +135,6 @@ onValue(ref(db,'.info/serverTimeOffset'),s=>{off=s.val()});
 /* タイマーとCUEの受信 */
 onValue(R('timer'),s=>{const v=s.val()||{};T={running:!!v.running,base:v.base||0,value:v.value||0};ui();tick()},bad);
 onValue(R('cue'),s=>{CUE=s.val()},bad);
-onValue(R('alive'),s=>{alive=s.val()||{}},bad);
 /* 操作権 */
 onValue(R('owner'),s=>{owner=s.val();ownerReady=true;if(role==='master'&&owner===null)set(R('owner'),did).catch(bad);ownerUi()},bad);
 function ownerUi(){if(role!=='master')return;
@@ -155,6 +156,8 @@ function drawCue(t){
   if(role==='master'){
     $('cml').textContent=on?CUE.label:'--';$('cml').style.color=on?CUE.color:'#64748B';
     $('cmt').textContent=on?fmt(CUE.target):'--:--:--';$('cmt').style.color=on?'#CBD5E1':'#64748B';
+    const mr=on?CUE.target-t:0;
+    $('cmr').textContent=on?p2(Math.floor(mr/60))+':'+p2(mr%60):'--:--';$('cmr').style.color=on?CUE.color:'#64748B';
   }else if(role==='cue'){
     const r=on?CUE.target-t:0;
     $('cueLabel').textContent=on?CUE.label:'--';$('cueLabel').style.color=on?CUE.color:'#64748B';
@@ -191,23 +194,11 @@ function setCue(label,color){if(!can()||!buf)return;set(R('cue'),{label,color,ta
 function clearCue(){if(!can())return;set(R('cue'),null).catch(bad)}
 Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue});
 
-/* 親機:子機の見張り(25秒以上連絡がなければ赤) */
-if(role==='master'){
-  $('sn').onclick=()=>remove(R('alive')).catch(bad);
-  setInterval(()=>{if(off===null&&!anchor)return;let n=0,ng=false;
-    for(const k in alive){const a=now()-alive[k];if(a<43200000){n++;if(a>25000)ng=true}}
-    $('al').style.color=ng?'#ff3030':'#555';$('sn').style.color=ng?'#ff3030':'#666';$('sn').textContent=n+' SLAVE'},1000);
-}
-/* 子機:10秒ごとに「生きています」を書く */
-if(role!=='master'){
-  let id;try{id=localStorage.getItem('sid-'+role);if(!id){id=role+'-'+Math.random().toString(36).slice(2,7);localStorage.setItem('sid-'+role,id)}}catch(e){id=role+'-x'}
-  const hb=()=>set(R('alive/'+id),serverTimestamp()).catch(bad);
-  hb();setInterval(hb,10000);
-  $('tap').style.display='flex';
-}
+/* 子機:TAP HERE を出す */
+if(role!=='master')$('tap').style.display='flex';
 
 /* 時計合わせ:サーバー時刻を3回測り、往復が一番速いものを採用。端末内部のストップウォッチで数える */
-function showSync(r){let e=$('sy');if(!e){e=document.createElement('div');e.id='sy';e.style.cssText='color:#475569;font-size:12px;margin-top:4px;font-family:monospace';$('dg').appendChild(e)}e.textContent=r<0?'SYNC SLOW':'SYNC '+Math.round(r)+'ms'}
+function showSync(){}
 async function resync(force){
   if(syncing||(!force&&performance.now()-lastSync<3000))return;
   syncing=true;
@@ -232,7 +223,7 @@ setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
 
 /* 画面スリープ防止 */
 let wl=null;
-async function awake(){try{if('wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}else err('WL NONE')}catch(e){err('WL '+e.name)}}
+async function awake(){try{if('wakeLock' in navigator&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
 $('tap').onclick=()=>{$('tap').style.display='none';awake()};
 document.addEventListener('pointerdown',()=>{if(!wl)awake()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true);if(role==='master'){ownerReady=false;ownerUi();goOffline(db);goOnline(db)}}});
