@@ -197,7 +197,7 @@ function resetTimer(){if(!can()||T.running)return;wr({running:false,value:0,base
 function toggleTimer(){if(!can()||locked||(off===null&&!anchor))return;
   if(T.running)wr({running:false,value:secs(),base:0});
   else wr({running:true,base:now()-T.value*1000,value:T.value})}
-function toggleLock(){locked=!locked;$('lock').textContent=locked?'🔒':'🔓';const g=q('.go');g.style.background=locked?'#334155':'#f8f8f4';g.style.color=locked?'#94a3b8':'#000'}
+function toggleLock(){locked=!locked;$('lock').textContent=locked?'🔒':'🔓';$('lock').style.background=locked?'#6B3F46':'';const g=q('.go');g.style.background=locked?'#334155':'#f8f8f4';g.style.color=locked?'#94a3b8':'#000'}
 function setCue(label,color){if(!can()||!buf)return;set(R('cue'),{label,color,target:hms(buf)}).catch(bad)}
 function clearCue(){if(!can())return;set(R('cue'),null).catch(bad)}
 Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue});
