@@ -54,10 +54,16 @@ button:active{transform:scale(.95)}
 .cb{display:grid;grid-template-columns:repeat(3,86.67px) 100px 70px;gap:10px;margin-top:6px}
 .cb button{height:50px;padding:4px;font-size:18px;font-weight:900}
 .cb .clr{font-size:15px;font-weight:700}
-#mon{text-align:right;margin-top:8px;padding-right:4px;font-family:monospace;font-size:16px}
+#mon{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:8px;padding-right:4px;font-family:monospace;font-size:16px}
 #al{color:#555;font-weight:900;margin-right:12px}
 #sn{color:#666;cursor:pointer}
 .m #status{margin-top:0}
+#dbg{color:#475569;font-size:12px;margin-top:4px;font-family:monospace}
+#dbg span+span{margin-left:10px}
+#err{color:#94a3b8;font-size:14px;margin-top:6px;font-family:monospace}
+.s #err,.c #err{display:none}
+.m #dbg,.m #err{margin-top:0}
+.m #dbg{color:#64748b}
 *{touch-action:manipulation}
 </style>
 </head>
@@ -71,6 +77,8 @@ button:active{transform:scale(.95)}
 <div id="slaveLabel">REAL TIME / TIMER</div>
 <div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--:--</span><span id="cueRemain">--:--</span></div></div>
 <div id="status" class="wait">CONNECTING...</div>
+<div id="dbg"><span id="sy"></span><span id="wl"></span></div>
+<div id="err"></div>
 </div>
 <div id="ui">
 <div id="inputPreview">--:--:--</div>
@@ -124,10 +132,10 @@ const DBURL=db.app.options.databaseURL;
 const can=()=>role==='master'&&ownerReady&&owner===did;
 const now=()=>anchor?anchor.srv+(performance.now()-anchor.perf):Date.now()+off;
 const secs=()=>T.running?Math.max(0,Math.floor((now()-T.base)/1000)):T.value;
-function err(m){if(role!=='master')return;let e=$('err');if(!e){e=document.createElement('div');e.id='err';e.style.cssText='color:#94a3b8;font-size:14px;margin-top:6px;font-family:monospace';$('dg').appendChild(e)}e.textContent=new Date().toTimeString().slice(0,8)+' '+m}
+function err(m){if(role!=='master')return;$('err').textContent=new Date().toTimeString().slice(0,8)+' '+m}
 const bad=e=>err('ERR '+(e.code||e.message));
 const setSt=(t,c)=>{$('status').textContent=t;$('status').className=c};
-if(role==='master')$('mon').appendChild($('status'));
+if(role==='master'){const m=$('mon');m.appendChild($('err'));m.appendChild($('dbg'));m.appendChild($('status'))}
 
 /* 接続と時計のずれ */
 onValue(ref(db,'.info/connected'),s=>{if(s.val()){setSt('CONNECTED','ok');resync(true);if(role==='master'&&!ownerReady)setTimeout(()=>{ownerReady=true;ownerUi()},1500)}else setSt('UNLINK','ng')});
@@ -198,7 +206,7 @@ Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLoc
 if(role!=='master')$('tap').style.display='flex';
 
 /* 時計合わせ:サーバー時刻を3回測り、往復が一番速いものを採用。端末内部のストップウォッチで数える */
-function showSync(){}
+function showSync(r){$('sy').textContent=r<0?'SYNC SLOW':'SYNC '+Math.round(r)+'ms'}
 async function resync(force){
   if(syncing||(!force&&performance.now()-lastSync<3000))return;
   syncing=true;
@@ -223,7 +231,7 @@ setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
 
 /* 画面スリープ防止 */
 let wl=null;
-async function awake(){try{if('wakeLock' in navigator&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+async function awake(){try{if('wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}else $('wl').textContent='WL NONE'}catch(e){$('wl').textContent='WL '+e.name}}
 $('tap').onclick=()=>{$('tap').style.display='none';awake()};
 document.addEventListener('pointerdown',()=>{if(!wl)awake()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true);if(role==='master'){ownerReady=false;ownerUi();goOffline(db);goOnline(db)}}});
