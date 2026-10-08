@@ -78,7 +78,7 @@ button:active{transform:scale(.95)}
 <div id="dg">
 <div style="width:100%;display:flex;justify-content:flex-end"><button class="rl" onclick="location.reload()">RELOAD</button></div>
 <div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div>
-<div id="slaveLabel">REAL TIME / TIMER</div>
+<div style="display:flex;align-items:center;gap:14px"><div id="slaveLabel">REAL TIME / TIMER</div><button id="qrBtn" onclick="qrShow(1)">QR</button></div>
 <div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--</span><span id="cueRemain">--:--</span></div></div>
 <div id="status" class="wait">CONNECTING...</div>
 <div id="dbg"><span id="sy"></span><span id="wl"></span></div>
@@ -103,7 +103,7 @@ button:active{transform:scale(.95)}
 <button class="clr" onclick="clearCue()">CUEクリア</button>
 <button id="lock" onclick="toggleLock()">🔓</button>
 </div>
-<div id="mon"><button id="qrBtn" onclick="qrShow(1)">QR</button></div>
+<div id="mon"></div>
 </div>
 </div>
 <video autoplay muted loop playsinline width="1" height="1"><source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4"></video>
@@ -140,6 +140,7 @@ const secs=()=>T.running?Math.max(0,Math.floor((now()-T.base)/1000)):T.value;
 function err(m){if(role!=='master')return;$('err').textContent=new Date().toTimeString().slice(0,8)+' '+m}
 const bad=e=>err('ERR '+(e.code||e.message));
 const setSt=(t,c)=>{$('status').textContent=t;$('status').className=c};
+if(role!=='master')$('qrBtn').style.display='none';
 if(role==='master'){const m=$('mon');m.appendChild($('err'));m.appendChild($('dbg'));m.appendChild($('status'))}
 
 /* 接続と時計のずれ */
