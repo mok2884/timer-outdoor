@@ -64,18 +64,22 @@ button:active{transform:scale(.95)}
 .s #err,.c #err{display:none}
 .m #dbg,.m #err{margin-top:0}
 .m #dbg{color:#64748b}
+#qrBtn{padding:4px 10px;font-size:12px;background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:6px}
+#qrOv{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:9000}
+#qrOv img{max-width:80vmin;max-height:80vmin;background:#fff;padding:16px;border-radius:12px;color:#000}
 *{touch-action:manipulation}
 </style>
 </head>
 <body>
 <div id="tap" style="position:fixed;inset:0;background:rgba(15,23,42,.8);display:none;justify-content:center;align-items:center;z-index:9999;cursor:pointer"><div style="color:#fff;font-size:30px;font-weight:bold;text-align:center">TAP HERE</div></div>
+<div id="qrOv" onclick="qrShow(0)"><img src="qr.png" alt="qr.png がありません"></div>
 <div id="ctl"><div><div id="ctlText" style="font-size:30px;margin-bottom:24px"></div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
 <div class="container">
 <div id="dg">
 <div style="width:100%;display:flex;justify-content:flex-end"><button class="rl" onclick="location.reload()">RELOAD</button></div>
 <div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div>
 <div id="slaveLabel">REAL TIME / TIMER</div>
-<div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--:--</span><span id="cueRemain">--:--</span></div></div>
+<div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--</span><span id="cueRemain">--:--</span></div></div>
 <div id="status" class="wait">CONNECTING...</div>
 <div id="dbg"><span id="sy"></span><span id="wl"></span></div>
 <div id="err"></div>
@@ -91,7 +95,7 @@ button:active{transform:scale(.95)}
 </div>
 <div class="rp"><button class="rz" onclick="resetTimer()">set ZERO</button><button class="go" onclick="toggleTimer()">START / STOP</button></div>
 </div>
-<div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--:--</span><span id="cmr">--:--</span></div>
+<div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--</span><span id="cmr">--:--</span></div>
 <div class="cb">
 <button onclick="setCue('CM入り','#20E0D0')">CM入</button>
 <button onclick="setCue('曲入り','#20E0D0')">曲入</button>
@@ -99,7 +103,7 @@ button:active{transform:scale(.95)}
 <button class="clr" onclick="clearCue()">CUEクリア</button>
 <button id="lock" onclick="toggleLock()">🔓</button>
 </div>
-<div id="mon"></div>
+<div id="mon"><button id="qrBtn" onclick="qrShow(1)">QR</button></div>
 </div>
 </div>
 <video autoplay muted loop playsinline width="1" height="1"><source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4"></video>
@@ -123,6 +127,7 @@ const $=id=>document.getElementById(id);
 const q=s=>document.querySelector(s);
 const p2=n=>String(n).padStart(2,'0');
 const fmt=t=>p2(Math.floor(t/3600))+':'+p2(Math.floor(t%3600/60))+':'+p2(t%60);
+const mmss=t=>p2(Math.floor(t%3600/60))+':'+p2(t%60);
 const hms=s=>{s=s.padStart(6,'0');return s.slice(0,2)*3600+s.slice(2,4)*60+s.slice(4,6)*1};
 const role=new URLSearchParams(location.search).get('role');
 document.body.className=role==='master'?'m':role==='cue'?'c':'s';
@@ -163,13 +168,13 @@ function drawCue(t){
   const on=!!CUE&&CUE.target>t;
   if(role==='master'){
     $('cml').textContent=on?CUE.label:'--';$('cml').style.color=on?CUE.color:'#64748B';
-    $('cmt').textContent=on?fmt(CUE.target):'--:--:--';$('cmt').style.color=on?'#CBD5E1':'#64748B';
+    $('cmt').textContent=on?mmss(CUE.target):'--:--';$('cmt').style.color=on?'#CBD5E1':'#64748B';
     const mr=on?CUE.target-t:0;
     $('cmr').textContent=on?p2(Math.floor(mr/60))+':'+p2(mr%60):'--:--';$('cmr').style.color=on?CUE.color:'#64748B';
   }else if(role==='cue'){
     const r=on?CUE.target-t:0;
     $('cueLabel').textContent=on?CUE.label:'--';$('cueLabel').style.color=on?CUE.color:'#64748B';
-    $('cueTargetTime').textContent=on?fmt(CUE.target):'--:--:--';$('cueTargetTime').style.color=on?'#e2e8f0':'#64748B';
+    $('cueTargetTime').textContent=on?mmss(CUE.target):'--:--';$('cueTargetTime').style.color=on?'#e2e8f0':'#64748B';
     $('cueRemain').textContent=on?p2(Math.floor(r/60))+':'+p2(r%60):'--:--';$('cueRemain').style.color=on?CUE.color:'#64748B';
   }
 }
@@ -198,9 +203,15 @@ function toggleTimer(){if(!can()||locked||(off===null&&!anchor))return;
   if(T.running)wr({running:false,value:secs(),base:0});
   else wr({running:true,base:now()-T.value*1000,value:T.value})}
 function toggleLock(){locked=!locked;$('lock').textContent=locked?'🔒':'🔓';$('lock').style.background=locked?'#6B3F46':'';const g=q('.go');g.style.background=locked?'#334155':'#f8f8f4';g.style.color=locked?'#94a3b8':'#000'}
-function setCue(label,color){if(!can()||!buf)return;set(R('cue'),{label,color,target:hms(buf)}).catch(bad)}
+function cueTarget(){
+  const t=secs();
+  if(buf.length<=4){const d=buf.padStart(4,'0');let g=t-t%3600+d.slice(0,2)*60+d.slice(2,4)*1;if(g<=t)g+=3600;return g}
+  return hms(buf)
+}
+function setCue(label,color){if(!can()||!buf)return;if(T.running&&off===null&&!anchor)return;set(R('cue'),{label,color,target:cueTarget()}).catch(bad)}
 function clearCue(){if(!can())return;set(R('cue'),null).catch(bad)}
-Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue});
+function qrShow(v){$('qrOv').style.display=v?'flex':'none'}
+Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue,qrShow});
 
 /* 子機:TAP HERE を出す */
 if(role!=='master')$('tap').style.display='flex';
