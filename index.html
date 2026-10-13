@@ -22,6 +22,15 @@ button:active{transform:scale(.95)}
 .s #slaveLabel,.c #slaveLabel{font-size:34px;font-weight:900}
 .rl{background:#334155;border:1px solid #475569;color:#cbd5e1;border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:5px}
 .m .rl{display:none}
+#topRow{width:100%;display:flex;justify-content:space-between;align-items:flex-start}
+#topRow .rl{margin-left:auto}
+#pinBtn{display:none;background:#334155;border:1px solid #475569;color:#cbd5e1;border-radius:4px;padding:4px 8px;margin-bottom:5px;line-height:0}
+#pinBtn.on{background:#475569;color:#fff}
+#pinBtn svg{width:16px;height:16px}
+.pip #cueInfo{height:auto;margin-top:6px}
+.pip #cueLabel{font-size:64px;margin-bottom:0}
+.pip #cueTargetTime{font-size:60px}
+.pip #cueRemain{font-size:96px}
 .m #display{font-size:7rem;padding:16px 20px;border-width:3px}
 .m .digit{width:50px;margin:0 5px}
 .m .separator{width:28px}
@@ -81,7 +90,7 @@ button:active{transform:scale(.95)}
 <div id="ctl"><div><div id="ctlText" style="font-size:30px;margin-bottom:24px"></div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
 <div class="container">
 <div id="dg">
-<div style="width:100%;display:flex;justify-content:flex-end"><button class="rl" onclick="location.reload()">RELOAD</button></div>
+<div id="topRow"><button id="pinBtn" onclick="pinToggle()" aria-label="PIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button><button class="rl" onclick="location.reload()">RELOAD</button></div>
 <div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div>
 <div id="lblRow"><span></span><div id="slaveLabel">REAL TIME / TIMER</div><button id="qrBtn" onclick="qrShow(1)">QR</button></div>
 <div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--</span><span id="cueRemain">--:--</span></div></div>
@@ -128,7 +137,8 @@ const P=new URLSearchParams(location.search);
 const ROOM='rooms/'+(P.get('room')||'tmr-8f3kQ2xZ7vLm').replace(/[.#$\[\]\/]/g,'');
 let did;try{did=localStorage.getItem('did');if(!did){did=Math.random().toString(36).slice(2,10);localStorage.setItem('did',did)}}catch(e){did=Math.random().toString(36).slice(2,10)}
 const R=p=>ref(db,ROOM+'/'+p);
-const $=id=>document.getElementById(id);
+let pipWin=null,pipBox=null;
+const $=id=>document.getElementById(id)||(pipWin&&pipWin.document.getElementById(id));
 const q=s=>document.querySelector(s);
 const p2=n=>String(n).padStart(2,'0');
 const fmt=t=>p2(Math.floor(t/3600))+':'+p2(Math.floor(t%3600/60))+':'+p2(t%60);
@@ -168,7 +178,7 @@ $('ctlBtn').onpointerdown=()=>{if(!ownerReady)return;fill.style.transition='widt
 ownerUi();
 
 /* 表示 */
-function blink(){const s=document.querySelectorAll('.separator');
+function blink(){const s=$('display').querySelectorAll('.separator');
   s.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
   setTimeout(()=>s.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
 function drawCue(t){
@@ -190,7 +200,7 @@ function tick(){
   if(anchor&&Math.abs((Date.now()-anchor.date)-(performance.now()-anchor.perf))>700)resync();
   const t=Math.min(secs(),359999);
   const x=fmt(t).replace(/:/g,'');
-  document.querySelectorAll('#display .digit').forEach((d,i)=>d.textContent=x[i]);
+  $('display').querySelectorAll('.digit').forEach((d,i)=>d.textContent=x[i]);
   if(role!=='master'&&t!==lastBlink){lastBlink=t;blink()}
   if(can()&&CUE&&t>=CUE.target){CUE=null;set(R('cue'),null).catch(bad)}
   drawCue(t);
@@ -230,7 +240,7 @@ function cueTarget(){
 function setCue(label,color){if(!can()||!buf)return;if(T.running&&off===null&&!anchor)return;set(R('cue'),{label,color,target:cueTarget()}).catch(bad)}
 function clearCue(){if(!can())return;set(R('cue'),null).catch(bad)}
 function qrShow(v){$('qrOv').style.display=v?'flex':'none'}
-Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue,qrShow});
+Object.assign(window,{press,clearInput,setTimer,resetTimer,toggleTimer,toggleLock,setCue,clearCue,qrShow,pinToggle});
 
 /* 子機:TAP HERE を出す */
 if(role!=='master')$('tap').style.display='flex';
@@ -265,6 +275,57 @@ async function awake(){try{if('wakeLock' in navigator){if(!wl){wl=await navigato
 $('tap').onclick=()=>{$('tap').style.display='none';awake()};
 document.addEventListener('pointerdown',()=>{if(!wl)awake()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true);if(role==='master'){ownerReady=false;ownerUi();goOffline(db);goOnline(db)}}});
+
+/* PIN: 手前に出る小さな窓(パソコンの Chrome / Edge のみ) */
+const PIN_W=300,PIN_H=170;
+let pipHome=[],pipTimer=null;
+if(role==='cue'&&window.documentPictureInPicture)$('pinBtn').style.display='inline-block';
+function pipFit(){
+  if(!pipWin||!pipBox)return;
+  pipBox.style.transform='scale(1)';
+  const r=pipBox.getBoundingClientRect();
+  if(!r.width||!r.height)return;
+  pipBox.style.transform='scale('+Math.min(pipWin.innerWidth*.96/r.width,pipWin.innerHeight*.96/r.height)+')';
+}
+function pipRestore(){
+  if(!pipWin)return;
+  const w=pipWin;pipWin=null;
+  try{w.clearInterval(pipTimer)}catch(e){}
+  pipHome.forEach(([el,mark])=>{if(mark.parentNode)mark.parentNode.insertBefore(el,mark);mark.remove()});
+  pipHome=[];pipBox=null;
+  $('pinBtn').classList.remove('on');
+  tick();
+}
+async function pinToggle(){
+  if(pipWin){pipWin.close();return}
+  if(!window.documentPictureInPicture)return;
+  try{
+    const w=await documentPictureInPicture.requestWindow({width:PIN_W,height:PIN_H});
+    document.querySelectorAll('style,link[rel="stylesheet"]').forEach(n=>w.document.head.appendChild(n.cloneNode(true)));
+    w.document.title='REAL TIME / TIMER';
+    w.document.body.className='c pip';
+    const box=w.document.createElement('div');
+    box.className='container';
+    box.style.cssText='width:max-content;flex:none;transform-origin:center';
+    w.document.body.appendChild(box);
+    ['display','cueInfo'].forEach(id=>{
+      const el=$(id),mark=document.createElement('span');
+      mark.style.display='none';
+      el.parentNode.insertBefore(mark,el);
+      pipHome.push([el,mark]);
+      box.appendChild(el);
+    });
+    pipWin=w;pipBox=box;
+    $('pinBtn').classList.add('on');
+    w.addEventListener('pagehide',pipRestore);
+    w.addEventListener('resize',pipFit);
+    pipTimer=w.setInterval(tick,100);
+    pipFit();setTimeout(pipFit,100);
+    if(w.document.fonts)w.document.fonts.ready.then(pipFit);
+    try{w.moveTo((screen.availLeft||0)+16,(screen.availTop||0)+screen.availHeight-w.outerHeight-16)}catch(e){}
+    tick();
+  }catch(e){pipWin=null}
+}
 
 /* 画面の拡大縮小 */
 const dg=$('dg'),box=q('.container');
