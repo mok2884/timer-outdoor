@@ -26,8 +26,9 @@ button:active{transform:scale(.95)}
 #topRow .rl{margin-left:auto}
 #pinBtn{display:none;background:#334155;border:1px solid #475569;color:#cbd5e1;border-radius:4px;padding:4px 8px;margin-bottom:5px;line-height:0}
 #pinBtn.on{background:#475569;color:#fff}
-#pinBtn svg{width:16px;height:16px}
-.pip #cueInfo{height:auto;margin-top:6px}
+#pinBtn svg{width:22px;height:22px}
+.pip #slaveLabel{font-size:44px;margin-top:4px}
+.pip #cueInfo{height:auto;margin-top:4px}
 .pip #cueLabel{font-size:64px;margin-bottom:0}
 .pip #cueTargetTime{font-size:60px}
 .pip #cueRemain{font-size:96px}
@@ -278,7 +279,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 /* PIN: 手前に出る小さな窓(パソコンの Chrome / Edge のみ) */
 const PIN_W=300,PIN_H=170;
-let pipHome=[],pipTimer=null;
+let pipHome=[],pipTimer=null,pipSync=null;
 if(role==='cue'&&window.documentPictureInPicture)$('pinBtn').style.display='inline-block';
 function pipFit(){
   if(!pipWin||!pipBox)return;
@@ -290,7 +291,7 @@ function pipFit(){
 function pipRestore(){
   if(!pipWin)return;
   const w=pipWin;pipWin=null;
-  try{w.clearInterval(pipTimer)}catch(e){}
+  try{w.clearInterval(pipTimer);w.clearInterval(pipSync)}catch(e){}
   pipHome.forEach(([el,mark])=>{if(mark.parentNode)mark.parentNode.insertBefore(el,mark);mark.remove()});
   pipHome=[];pipBox=null;
   $('pinBtn').classList.remove('on');
@@ -308,7 +309,7 @@ async function pinToggle(){
     box.className='container';
     box.style.cssText='width:max-content;flex:none;transform-origin:center';
     w.document.body.appendChild(box);
-    ['display','cueInfo'].forEach(id=>{
+    ['display','slaveLabel','cueInfo'].forEach(id=>{
       const el=$(id),mark=document.createElement('span');
       mark.style.display='none';
       el.parentNode.insertBefore(mark,el);
@@ -320,6 +321,7 @@ async function pinToggle(){
     w.addEventListener('pagehide',pipRestore);
     w.addEventListener('resize',pipFit);
     pipTimer=w.setInterval(tick,100);
+    pipSync=w.setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
     pipFit();setTimeout(pipFit,100);
     if(w.document.fonts)w.document.fonts.ready.then(pipFit);
     try{w.moveTo((screen.availLeft||0)+16,(screen.availTop||0)+screen.availHeight-w.outerHeight-16)}catch(e){}
