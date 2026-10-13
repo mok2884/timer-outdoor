@@ -279,8 +279,17 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 /* PIN: 手前に出る小さな窓(パソコンの Chrome / Edge のみ) */
 const PIN_W=300,PIN_H=170;
-let pipHome=[],pipTimer=null,pipSync=null;
+let pipHome=[],pipTimer=null,pipSync=null,pwl=null;
 if(role==='cue'&&window.documentPictureInPicture)$('pinBtn').style.display='inline-block';
+async function pipAwake(){
+  if(!pipWin||pwl)return;
+  const w=pipWin;
+  try{
+    const l=await w.navigator.wakeLock.request('screen');
+    if(pipWin!==w){l.release().catch(()=>{});return}
+    pwl=l;l.addEventListener('release',()=>{if(pwl===l)pwl=null})
+  }catch(e){$('wl').textContent='WL(PIN) '+e.name}
+}
 function pipFit(){
   if(!pipWin||!pipBox)return;
   pipBox.style.transform='scale(1)';
@@ -293,7 +302,7 @@ function pipRestore(){
   const w=pipWin;pipWin=null;
   try{w.clearInterval(pipTimer);w.clearInterval(pipSync)}catch(e){}
   pipHome.forEach(([el,mark])=>{if(mark.parentNode)mark.parentNode.insertBefore(el,mark);mark.remove()});
-  pipHome=[];pipBox=null;
+  pipHome=[];pipBox=null;if(pwl){pwl.release().catch(()=>{});pwl=null}
   $('pinBtn').classList.remove('on');
   tick();
 }
@@ -321,7 +330,8 @@ async function pinToggle(){
     w.addEventListener('pagehide',pipRestore);
     w.addEventListener('resize',pipFit);
     pipTimer=w.setInterval(tick,100);
-    pipSync=w.setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
+    pipSync=w.setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync();pipAwake()},5000);
+    pipAwake();
     pipFit();setTimeout(pipFit,100);
     if(w.document.fonts)w.document.fonts.ready.then(pipFit);
     try{w.moveTo((screen.availLeft||0)+16,(screen.availTop||0)+screen.availHeight-w.outerHeight-16)}catch(e){}
