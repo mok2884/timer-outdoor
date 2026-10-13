@@ -109,8 +109,10 @@ button:active{transform:scale(.95)}
 <div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--</span><span id="cmr">--:--</span></div>
 <div class="cb">
 <button onclick="setCue('CM入り','#20E0D0')">CM入</button>
-<button onclick="setCue('曲入り','#20E0D0')">曲入</button>
-<button onclick="setCue('スタジオ戻り','#FFF02A')">戻り</button>
+<!-- 曲入【保留中】復活するときは、次の1行(空き)を消して、その下のコメントの中のボタンを元に戻す -->
+<span></span>
+<!-- <button onclick="setCue('曲入り','#20E0D0')">曲入</button> -->
+<button onclick="setCue('現場戻り','#FFF02A')">戻り</button>
 <button class="clr" onclick="clearCue()">CUEクリア</button>
 <button id="lock" onclick="toggleLock()">🔓</button>
 </div>
