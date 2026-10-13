@@ -45,6 +45,8 @@ button:active{transform:scale(.95)}
 .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:280px}
 .keypad button{font-size:24px;font-weight:900;height:80px}
 .act{background:#475569}
+.kh{display:block;font-size:11px;font-weight:300;opacity:.6;margin-top:2px;line-height:1}
+@media (hover:none){.kh{display:none}}
 .set{background:#0f766e;font-size:16px!important}
 .rp{display:flex;flex-direction:column;gap:10px}
 .rz{height:80px;background:#556577;font-weight:900}
@@ -93,9 +95,9 @@ button:active{transform:scale(.95)}
 <button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button>
 <button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button>
 <button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button>
-<button class="act" onclick="clearInput()">CLR</button><button onclick="press(0)">0</button><button class="set" onclick="setTimer()">TIME SET</button>
+<button class="act" onclick="clearInput()">CLR<span class="kh">(Esc)</span></button><button onclick="press(0)">0</button><button class="set" onclick="setTimer()">TIME SET<span class="kh">(T)</span></button>
 </div>
-<div class="rp"><button class="rz" onclick="resetTimer()">set ZERO</button><button class="go" onclick="toggleTimer()">START / STOP</button></div>
+<div class="rp"><button class="rz" onclick="resetTimer()">set ZERO<span class="kh">(Z)</span></button><button class="go" onclick="toggleTimer()">START / STOP<span class="kh">(Ent)</span></button></div>
 </div>
 <div id="cueMasterInfo"><span id="cml">--</span><span id="cmt">--:--</span><span id="cmr">--:--</span></div>
 <div class="cb">
@@ -200,6 +202,18 @@ const wr=o=>set(R('timer'),o).catch(bad);
 function ui(){if(role!=='master')return;q('.rz').classList.toggle('disabled',T.running);q('.set').classList.toggle('disabled',T.running)}
 function preview(){const s=buf||saved;if(!s){$('inputPreview').textContent='--:--:--';return}const d=s.padStart(6,'0');$('inputPreview').textContent=d.slice(0,2)+':'+d.slice(2,4)+':'+d.slice(4,6)}
 function press(n){if(!editing){buf='';editing=true}if(buf.length<6){buf+=n;preview()}}
+addEventListener('keydown',e=>{
+  if(role!=='master'||e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;
+  const c=e.code;
+  if($('qrOv').style.display==='flex'){if(c==='Escape')qrShow(0);return}
+  let m=/^(?:Digit|Numpad)(\d)$/.exec(c);
+  if(m){press(+m[1]);e.preventDefault();return}
+  if(c==='Enter'||c==='NumpadEnter'){e.preventDefault();toggleTimer()}
+  else if(c==='Escape'){e.preventDefault();clearInput()}
+  else if(c==='KeyT'){e.preventDefault();setTimer()}
+  else if(c==='KeyZ'){e.preventDefault();resetTimer()}
+  else if(c==='Space')e.preventDefault()
+});
 function clearInput(){buf='';saved='';editing=false;preview()}
 function setTimer(){if(!can()||T.running||!buf)return;wr({running:false,value:hms(buf),base:0});saved=buf;editing=false;preview()}
 function resetTimer(){if(!can()||T.running)return;wr({running:false,value:0,base:0})}
