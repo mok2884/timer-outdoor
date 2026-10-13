@@ -178,7 +178,8 @@ ownerUi();
 
 /* 表示 */
 function blink(){const s=$('display').querySelectorAll('.separator');
-  s.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
+  const g=role==='master'?'0 0 5px rgba(255,0,0,.8),0 0 10px rgba(255,0,0,.45)':'0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)';
+  s.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow=g});
   setTimeout(()=>s.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
 function drawCue(t){
   const on=!!CUE&&CUE.target>t;
@@ -200,7 +201,7 @@ function tick(){
   const t=Math.min(secs(),359999);
   const x=fmt(t).replace(/:/g,'');
   $('display').querySelectorAll('.digit').forEach((d,i)=>d.textContent=x[i]);
-  if(role!=='master'&&t!==lastBlink){lastBlink=t;blink()}
+  if(t!==lastBlink){lastBlink=t;if(role!=='master'||T.running)blink()}
   if(can()&&CUE&&t>=CUE.target){CUE=null;set(R('cue'),null).catch(bad)}
   drawCue(t);
 }
