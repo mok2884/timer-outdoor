@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d16">
+<title>CM 進行(表示)</title>
+<!-- 数字用フォント: 届くまで画面を止めない読み込み方(届かなければ代わりの字体で表示) -->
+<link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+*{box-sizing:border-box;touch-action:manipulation}
+html,body{height:100%}
+body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;background:#080d16;color:#e2e8f0;overflow:hidden;overscroll-behavior:none}
+
+/* 全体。横幅に合わせて拡大縮小する(縦に入りきらない分は、下の行から見えなくなる) */
+#app{position:absolute;left:50%;top:0;transform-origin:top center;transform:translateX(-50%);padding:14px 10px 0 24px;width:max-content}
+
+/* タイマー枠(cm.html と同じ形) */
+#display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;font-family:'DS-Digital',monospace;border:3px solid #fff;border-radius:.114em;padding:.2em .31em;background:#000;width:max-content}
+.digit{width:.4545em;text-align:right;display:inline-block;margin:0 .068em;font-style:italic;color:#ff4500}
+.separator{width:.295em;text-align:center;display:inline-block;color:#f00;font-size:1em;font-weight:900;transform:translateX(.034em)}
+
+/* CUE用の空き(今は何も出さない) */
+#cueSlot{height:26px}
+
+/* 一覧。OAの目印の真ん中が、タイマー枠の左の線にくる */
+#list{margin-left:-14px}
+.row{display:grid;grid-template-columns:28px 104px minmax(0,1fr) auto;align-items:center;gap:6px;font-size:20px;height:32px;padding-right:6px;border-radius:6px;color:#b4bfcd;font-variant-numeric:tabular-nums}
+.row>div{height:100%;line-height:32px;overflow:hidden;white-space:nowrap}
+.row .c1{text-align:center}
+.row .c2.q{color:#ff3b3b;font-weight:700}
+.row .c3{text-overflow:clip}
+.row .c4{text-align:right;min-width:56px;overflow:visible}
+.row.late{opacity:.35}
+.row.oa{background:rgba(255,255,255,.17);color:#fff;height:56px}
+.row.oa>div{line-height:56px}
+.row.oa .c4{font-size:42px;font-weight:700}
+.badge{display:inline-block;vertical-align:middle;background:#dc2626;color:#fff;font-size:12px;font-weight:700;line-height:18px;padding:0 3px;border-radius:4px;letter-spacing:.03em}
+.empty{color:#475569;font-size:14px;padding:10px 0 0 34px}
+
+/* 切れたときだけ出る */
+#unl{position:absolute;top:2px;right:10px;display:none;font-size:11px;font-weight:700;color:#fff;border:1px solid #fff;border-radius:4px;padding:0 6px;line-height:16px}
+
+/* PIN ボタン(パソコンの Chrome / Edge のときだけ出る) */
+#pinBtn{position:fixed;top:6px;left:6px;display:none;background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;padding:3px 5px;line-height:0;cursor:pointer;z-index:5}
+#pinBtn.on{background:#475569;color:#fff}
+#pinBtn svg{width:20px;height:20px}
+</style>
+</head>
+<body>
+<button id="pinBtn" aria-label="PIN" title="手前に小さく出す"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button>
+<div id="app">
+  <span id="unl">UNLINK</span>
+  <div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div>
+  <div id="cueSlot"></div>
+  <div id="list"></div>
+</div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getDatabase,ref,onValue}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+const db=getDatabase(initializeApp({
+  apiKey:"AIzaSyBxjNwnUhrCtYa0Tlr0mnbRm3-3i7CZFX0",
+  authDomain:"broadcast-timer-da325.firebaseapp.com",
+  databaseURL:"https://broadcast-timer-da325-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"broadcast-timer-da325",
+  storageBucket:"broadcast-timer-da325.firebasestorage.app",
+  messagingSenderId:"937331375256",
+  appId:"1:937331375256:web:4d18dfd3c89744057d64ed"
+}));
+const P=new URLSearchParams(location.search);
+const ROOM='rooms/'+(P.get('room')||'tmr-8f3kQ2xZ7vLm').replace(/[.#$\[\]\/]/g,'');
+let did;try{did=localStorage.getItem('did');if(!did){did=Math.random().toString(36).slice(2,10);localStorage.setItem('did',did)}}catch(e){did=Math.random().toString(36).slice(2,10)}
+const R=p=>ref(db,ROOM+'/'+p);
+/* 画面の部品(小窓に移しても、そのまま使えるように、最初に覚えておく) */
+const app=document.getElementById('app'),disp=document.getElementById('display'),list=document.getElementById('list'),unl=document.getElementById('unl'),pinBtn=document.getElementById('pinBtn');
+const digits=disp.querySelectorAll('.digit'),seps=disp.querySelectorAll('.separator');
+const p2=n=>String(n).padStart(2,'0');
+const fmt=t=>p2(Math.floor(t/3600))+':'+p2(Math.floor(t%3600/60))+':'+p2(t%60);
+const fD=s=>{if(s==null)return '--';s=Math.max(0,Math.round(s));return s<60?s+'"':Math.floor(s/60)+"'"+p2(s%60)+'"'};
+
+/* ===== 親機のタイマー(読むだけ。自分で数える) ===== */
+let off=null,anchor=null,syncing=false,lastSync=0;
+let T={ok:false,running:false,base:0,value:0};
+const DBURL=db.app.options.databaseURL;
+const now=()=>anchor?anchor.srv+(performance.now()-anchor.perf):Date.now()+off;
+const tsec=()=>{if(!T.ok||(off===null&&!anchor))return null;const t=T.running?(now()-T.base)/1000:T.value;return Math.min(359999,Math.max(0,t))};
+async function resync(force){
+  if(syncing||(!force&&performance.now()-lastSync<3000))return;
+  syncing=true;
+  try{
+    let best=null;
+    for(let i=0;i<3;i++){
+      const c=new AbortController(),to=setTimeout(()=>c.abort(),4000);
+      const t0=performance.now();
+      const r=await fetch(DBURL+'/'+ROOM+'/ping/'+did+'.json',{method:'PUT',body:'{".sv":"timestamp"}',signal:c.signal});
+      const S=await r.json();
+      clearTimeout(to);
+      const t1=performance.now(),d=Date.now();
+      if(typeof S!=='number')throw new Error('bad');
+      const rtt=t1-t0;
+      if(!best||rtt<best.rtt)best={rtt,srv:S+rtt/2,perf:t1,date:d};
+    }
+    if(best.rtt<1500)anchor=best;
+  }catch(e){}
+  syncing=false;lastSync=performance.now();
+}
+/* 1分ごとに合わせ直す */
+const syncCheck=()=>{if(!anchor||performance.now()-lastSync>60000)resync()};
+setInterval(syncCheck,5000);
+
+/* ===== つながり。2.5秒以上切れたときだけ「UNLINK」を出す ===== */
+let unlT=null;
+function linked(on){clearTimeout(unlT);if(on)unl.style.display='none';else unlT=setTimeout(()=>{unl.style.display='inline-block'},2500)}
+linked(false);
+onValue(ref(db,'.info/connected'),s=>{if(s.val()){linked(true);resync(true)}else linked(false)});
+onValue(ref(db,'.info/serverTimeOffset'),s=>{off=s.val()});
+onValue(R('timer'),s=>{const v=s.val()||{};T={ok:true,running:!!v.running,base:v.base||0,value:v.value||0};lastSig=''});
+
+/* ===== 進行データ(cm.html が書いたものを読む) ===== */
+let rows=[],got=false,lastSig='';
+onValue(R('cm'),s=>{
+  const v=s.val();got=true;
+  const rs=v&&v.rows?v.rows:{};
+  rows=Object.keys(rs).sort((a,b)=>a-b).map(k=>rs[k]).filter(r=>r&&typeof r==='object');
+  lastSig='';
+});
+function remainOf(r){
+  const d=r.dur||0;
+  if(r.how==='T'){const t=tsec();return t==null||r.at==null?d:r.at+d-t}
+  if(r.how==='W'&&r.w0!=null)return d-(now()-r.w0)/1000;
+  return d;
+}
+const late=(r,t)=>r.k==='F'&&r.st!=='oa'&&(r.at==null||(t!=null&&T.running&&r.at<t-1));
+
+/* ===== 描く ===== */
+let lastBlink=-1;
+function blink(){
+  seps.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
+  setTimeout(()=>seps.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
+function draw(){
+  /* 時計が飛んだら合わせ直す */
+  if(anchor&&Math.abs((Date.now()-anchor.date)-(performance.now()-anchor.perf))>700)resync();
+  const t=tsec();
+  const x=fmt(Math.floor(t==null?0:t)).replace(/:/g,'');
+  digits.forEach((d,i)=>d.textContent=x[i]);
+  const ts=t==null?-1:Math.floor(t);
+  if(ts!==lastBlink){lastBlink=ts;if(ts>=0&&T.running)blink()}
+  drawList(t);
+}
+function drawList(t){
+  const vis=rows.slice(0,10);
+  const sig=vis.map(r=>r.k+r.st+(r.st==='oa'?Math.ceil(Math.max(0,remainOf(r))):'')+(late(r,t)?'L':'')).join()+'|'+got;
+  if(sig===lastSig)return;
+  lastSig=sig;
+  list.textContent='';
+  if(!vis.length){if(got){const e=document.createElement('div');e.className='empty';e.textContent='--';list.appendChild(e)}return}
+  vis.forEach(r=>{
+    const oa=r.st==='oa',d=document.createElement('div');
+    d.className='row'+(oa?' oa':'')+(late(r,t)?' late':'');
+    const mk=(c,tx)=>{const x=document.createElement('div');x.className=c;if(tx!=null)x.textContent=tx;d.appendChild(x);return x};
+    const c1=mk('c1');
+    if(oa){const b=document.createElement('span');b.className='badge';b.textContent='OA';c1.appendChild(b)}
+    mk('c2'+(r.k==='Q'?' q':''),r.k==='Q'?'Q':(r.at==null?'--:--:--':fmt(Math.round(r.at))));
+    mk('c3',r.name||'(名前なし)');
+    mk('c4',r.dur==null?'--':(r.dur===0&&r.k==='F')?'':fD(oa?Math.max(0,Math.ceil(remainOf(r))):r.dur));
+    list.appendChild(d);
+  });
+}
+setInterval(draw,100);
+
+/* ===== 大きさ合わせ(横幅に合わせる) ===== */
+function fit(){
+  list.style.width=(disp.offsetWidth+14)+'px';
+  const W=pipWin?pipWin.innerWidth:innerWidth;
+  const s=Math.min(W*.96/app.offsetWidth,pipWin?4:2);
+  if(s>0)app.style.transform='translateX(-50%) scale('+s+')';
+}
+addEventListener('resize',fit);
+addEventListener('load',fit);
+setTimeout(fit,100);setTimeout(fit,1500);
+document.querySelectorAll('link[rel="stylesheet"]').forEach(l=>l.addEventListener('load',()=>setTimeout(fit,50)));
+if(document.fonts){document.fonts.ready.then(fit);document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',fit)}
+
+/* ===== 画面スリープ防止 ===== */
+let wl=null;
+async function awake(){try{if('wakeLock' in navigator&&!wl&&document.visibilityState==='visible'){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+awake();
+document.addEventListener('pointerdown',()=>{if(!wl)awake()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true)}});
+
+/* ===== PIN: 手前に出る小さな窓(パソコンの Chrome / Edge のみ) ===== */
+let pipWin=null,pipTimer=null,pipSync=null,pwl=null;
+if(window.documentPictureInPicture&&matchMedia('(hover:hover)').matches)pinBtn.style.display='inline-block';
+async function pipAwake(){
+  if(!pipWin||pwl)return;
+  const w=pipWin;
+  try{
+    const l=await w.navigator.wakeLock.request('screen');
+    if(pipWin!==w){l.release().catch(()=>{});return}
+    pwl=l;l.addEventListener('release',()=>{if(pwl===l)pwl=null})
+  }catch(e){}
+}
+function pipRestore(){
+  if(!pipWin)return;
+  const w=pipWin;pipWin=null;
+  try{w.clearInterval(pipTimer);w.clearInterval(pipSync)}catch(e){}
+  document.body.appendChild(app);
+  if(pwl){pwl.release().catch(()=>{});pwl=null}
+  pinBtn.classList.remove('on');
+  fit();draw();
+}
+async function pinToggle(){
+  if(pipWin){pipWin.close();return}
+  if(!window.documentPictureInPicture)return;
+  try{
+    const w=await documentPictureInPicture.requestWindow({width:380,height:230});
+    document.querySelectorAll('style,link[rel="stylesheet"]').forEach(n=>{const c=n.cloneNode(true);if(c.tagName==='LINK')c.media='all';w.document.head.appendChild(c)});
+    w.document.title='CM 進行';
+    w.document.body.appendChild(app);
+    pipWin=w;
+    pinBtn.classList.add('on');
+    w.addEventListener('pagehide',pipRestore);
+    w.addEventListener('resize',fit);
+    /* 元の画面が後ろに隠れても止まらないように、小窓の中でも動かす */
+    pipTimer=w.setInterval(draw,100);
+    pipSync=w.setInterval(()=>{syncCheck();pipAwake()},5000);
+    pipAwake();
+    fit();setTimeout(fit,100);
+    if(w.document.fonts)w.document.fonts.ready.then(fit);
+    draw();
+  }catch(e){pipWin=null}
+}
+pinBtn.onclick=pinToggle;
+</script>
+</body>
+</html>

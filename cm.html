@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d16">
+<title>CM 進行</title>
+<!-- 数字用フォント: 届くまで画面を止めない読み込み方(届かなければ代わりの字体で表示) -->
+<link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+*{box-sizing:border-box;touch-action:manipulation}
+html,body{height:100%}
+body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;background:#080d16;color:#e2e8f0;display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none}
+button{padding:10px 16px;font-size:16px;border:none;border-radius:8px;cursor:pointer;background:#334155;color:#fff;font-family:inherit}
+button:active{transform:scale(.96)}
+input,select,textarea{font-family:inherit;font-size:16px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:7px 8px}
+input:disabled{opacity:.3}
+input.bad{border-color:#ef4444}
+.chip{font-size:13px;font-weight:700;padding:3px 9px;border-radius:5px;border:1px solid #334155;color:#64748b;white-space:nowrap}
+.chip.w{color:#fff;border-color:#fff}
+.chip.det{color:#a8963a;border-color:#a8963a}
+.chip.off{color:#ef4444;border-color:#ef4444}
+.chip.ok{color:#22c55e;border-color:#22c55e}.chip.wait{color:#eab308;border-color:#eab308}.chip.ng{color:#ef4444;border-color:#ef4444}
+
+/* 上の帯: 親機の時間・画面の切り替え */
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:1px solid #1e293b}
+#pt{display:flex;align-items:center;gap:7px}
+/* タイマー枠の左端が、下の行の「Q」の位置にそろう。その左に、状態を縦に並べる */
+#ptc{display:flex;flex-direction:column;gap:5px;width:56px}
+#ptc #pts,#ptc #conn{color:#94a3b8;border-color:#475569}
+#ptc .chip{width:56px;font-size:8px;letter-spacing:.02em;line-height:1.3;text-align:center;padding:2px 0;border-radius:4px;overflow:hidden}
+#display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;font-family:'DS-Digital',monospace;border:3px solid #fff;border-radius:.114em;padding:.2em .31em;background:#000}
+.digit{width:.4545em;text-align:right;display:inline-block;margin:0 .068em;font-style:italic;color:#ff4500}
+.separator{width:.295em;text-align:center;display:inline-block;color:#f00;font-size:1em;font-weight:900;transform:translateX(.034em)}
+#modeSw{margin-left:auto;display:flex;gap:0}
+#modeSw button{border-radius:0;background:#111827;color:#64748b;font-weight:600;font-size:13px;padding:5px 16px}
+#modeSw button:first-child{border-radius:5px 0 0 5px}
+#modeSw button:last-child{border-radius:0 5px 5px 0}
+#modeSw button.on{background:#cbd5e1;color:#0b1220}
+
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+section{display:none;flex:1;min-height:0;flex-direction:column}
+body.edit #editView{display:flex}
+body.run #runView{display:flex}
+
+/* 入力画面(表計算ソフトのように簡素に) */
+#editView{overflow:auto;padding:8px 18px 14px}
+table{border-collapse:collapse;font-size:14px}
+th{font-size:12px;color:#94a3b8;text-align:left;padding:2px 6px;font-weight:600;background:#111827;border:1px solid #2a3547;position:sticky;top:0;z-index:1;white-space:nowrap}
+td{padding:0;border:1px solid #2a3547;height:24px;white-space:nowrap}
+td.no{color:#64748b;width:30px;text-align:right;padding:0 6px;background:#111827;font-size:12px}
+td input,td select{border:none;border-radius:0;background:transparent;padding:2px 6px;font-size:14px;height:23px;margin:0;vertical-align:middle}
+td input:focus,td select:focus{outline:1px solid #38bdf8;outline-offset:-1px;background:#0b1220}
+input.bad{background:#4a1414}
+.k{width:62px}.at{width:84px}.nm{width:280px}.du{width:58px}
+.dv{display:inline-block;width:62px;font-size:12px;color:#94a3b8;padding-left:4px;vertical-align:middle}.dv.bad{color:#ef4444}
+tr.st-done td:not(.ops):not(.last){opacity:.4}
+tr.st-oa .no{color:#ff3b3b;font-weight:900}
+td.ops,td.last{padding:0 2px}
+.ops button,.stb{padding:0 7px;height:21px;font-size:13px;background:#1e293b;border-radius:3px;margin:0}
+.stb{min-width:44px;font-size:12px}
+tr.st-done .stb{background:#475569}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.bar button{padding:5px 10px;font-size:13px;border-radius:4px}
+details{margin:8px 0;max-width:900px;border:1px solid #1e293b;border-radius:4px;padding:6px 10px}
+summary{cursor:pointer;color:#94a3b8;font-weight:700;font-size:13px}
+textarea{width:100%;height:90px;margin:6px 0;font-family:monospace;font-size:13px}
+.hint{font-size:12px;color:#64748b;line-height:1.5;max-width:900px}
+.srow{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin:6px 0;font-size:14px}
+.srow input[type=range]{width:100%;padding:0}
+.srow b{font-family:monospace;text-align:right}
+
+/* 進行中画面 */
+#runView{width:var(--runw,420px);margin-left:18px}
+#list{flex:1;min-height:0;overflow:hidden;padding:12px 0;display:flex;flex-direction:column;gap:0}
+.row{display:grid;grid-template-columns:50px 114px minmax(0,1fr) auto;align-items:center;gap:6px;font-size:20px;font-weight:400;height:32px;padding:0 6px;border-radius:6px;color:#b4bfcd;border:1px solid transparent;font-variant-numeric:tabular-nums}
+/* 行の高さは、CMの名前の文字の種類に関係なく、いつも一定 */
+.row>div{height:100%;line-height:30px;overflow:hidden;white-space:nowrap}
+.row .c1{text-align:center}
+.row .c2.q{color:#ff3b3b;font-weight:700}
+.row .c3{text-overflow:clip}
+.row .c4{text-align:right;min-width:64px;overflow:visible}
+.row.late{opacity:.35}
+.row.oa{background:rgba(255,255,255,.17);color:#fff;height:56px}
+.row.oa>div{line-height:54px}
+.row.oa .c1{justify-self:start;align-self:center;height:28px;background:#dc2626;color:#fff;border-radius:8px;font-weight:700;padding:0 6px;line-height:28px;letter-spacing:.04em}
+.row.oa .c4{font-size:42px;font-weight:700}
+.empty{color:#64748b;font-size:16px;padding:24px 0;text-align:center}
+.done-n{color:#475569;font-size:13px;padding-left:6px}
+#ctrls{display:flex;gap:12px;padding:10px 0}
+#ctrls button{width:46px;height:42px;padding:0;font-size:14px;font-weight:600;background:#1e293b;color:#94a3b8;border-radius:6px}
+#log{font-family:monospace;font-size:11px;color:#64748b;padding:2px 0 8px;min-height:20px;max-height:80px;overflow:hidden}
+#log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#log div+div{margin-top:2px}
+
+/* 音の帯(いつも下に出る) */
+footer{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid #1e293b}
+footer{padding:5px 18px;gap:10px}
+#abtn{padding:3px 9px;font-size:12px;background:#111827;color:#64748b;border-radius:4px}
+#abtn.on{background:#1e293b;color:#94a3b8}
+#meterWrap{flex:1;min-width:120px}
+#meter{position:relative;height:5px;background:#111827;border-radius:3px}
+#mbar{height:100%;width:0;background:#2a3547;border-radius:3px}
+#mbar.snd{background:#4b7a5e}
+#mthr{position:absolute;top:-2px;bottom:-2px;width:1px;background:#7f3a3a;left:0}
+#adb{font-family:monospace;font-size:11px;color:#475569;width:60px;text-align:right}
+footer .chip,footer .chip.ok,footer .chip.wait{font-size:11px;padding:1px 7px;color:#64748b;border-color:#1e293b}
+#snd{width:84px;text-align:center}
+</style>
+</head>
+<body class="edit">
+<header>
+  <div id="pt"><div id="ptc"><span id="pts" class="chip">--</span><span id="conn" class="chip wait">CONNECTING</span><span id="det" class="chip off">DETECT OFF</span></div><div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div></div>
+  <div id="modeSw"><button id="mEdit" class="on">入力</button><button id="mRun">進行中</button></div>
+</header>
+<main>
+  <section id="editView">
+    <table>
+      <thead><tr><th></th><th>発行</th><th>時間(確定)</th><th>CMの名前</th><th>秒数</th><th></th><th></th></tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+    <div class="hint">確定は、秒数を空にできます。その場合は、時間になると行が消えるだけです。確定の行より下にあるQは、その確定が消えるまで始まりません。</div>
+    <div class="bar">
+      <button class="add" id="add">＋ 行を追加</button>
+      <button id="resetSt">最初から(全部を待機に戻す)</button>
+      <button id="clearAll">全部消す</button>
+    </div>
+    <details>
+      <summary>一括入力(貼り付け)</summary>
+      <div class="hint">1行に1件。「発行,時間,名前,秒数」の順で、カンマかタブで区切ります。発行は Q か 確定。Q の時間は空で構いません。秒数は 22 や 1'22" の形です(確定は空でもかまいません)。<br>例:　Q,,サンプルA,15　　確定,05:35:00,サンプルB,1'22"</div>
+      <textarea id="paste" spellcheck="false" placeholder="Q,,サンプルA,15&#10;確定,12:30,サンプルB,30"></textarea>
+      <button id="pasteAdd">追加する</button>
+    </details>
+    <details open>
+      <summary>音のソースと検知の設定</summary>
+      <div class="srow"><span>音のソース</span><select id="dev"><option value="">(下の「音を聞く」を押すと一覧が出ます)</option></select><span></span></div>
+      <div class="srow"><span>音あり のしきい値</span><input id="sThr" type="range" min="-90" max="-10" step="1"><b id="vThr"></b></div>
+      <div class="srow"><span>無音が続く時間</span><input id="sHold" type="range" min="0.3" max="5" step="0.1"><b id="vHold"></b></div>
+      <div class="srow"><span>終了後に検知しない</span><input id="sGuard" type="range" min="0" max="10" step="0.5"><b id="vGuard"></b></div>
+      <div class="srow"><span>音が続いたらさかのぼる</span><input id="sFb" type="range" min="2" max="10" step="0.5"><b id="vFb"></b></div>
+      <div class="hint">しきい値より大きい音を「音あり」、小さい音を「無音」とみなします。無音が上の時間つづいたあとに音が入ると、Qの開始とみなします。<br>CMが連続して、無音が検知できなかったときのために、前のイベントが終わったあと、音が「さかのぼる時間」つづいたら、次のQが少し前から始まっていたことにします(普段の終わりには影響しません)。</div>
+    </details>
+  </section>
+  <section id="runView">
+    <div id="list"></div>
+    <div id="ctrls"><button id="bBack" title="バック(1つ戻す)" aria-label="バック">＜＜</button><button id="bNow" title="今、始まった" aria-label="今、始まった">▶</button><button id="bSkip" title="スキップ" aria-label="スキップ">＞＞</button></div>
+    <div id="log"></div>
+  </section>
+</main>
+<footer>
+  <button id="abtn">🎤 音を聞く</button>
+  <div id="meterWrap"><div id="meter"><div id="mbar"></div><div id="mthr"></div></div></div>
+  <span id="adb">-- dB</span>
+  <span id="snd" class="chip">停止中</span>
+</footer>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getDatabase,ref,onValue,set}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+const db=getDatabase(initializeApp({
+  apiKey:"AIzaSyBxjNwnUhrCtYa0Tlr0mnbRm3-3i7CZFX0",
+  authDomain:"broadcast-timer-da325.firebaseapp.com",
+  databaseURL:"https://broadcast-timer-da325-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"broadcast-timer-da325",
+  storageBucket:"broadcast-timer-da325.firebasestorage.app",
+  messagingSenderId:"937331375256",
+  appId:"1:937331375256:web:4d18dfd3c89744057d64ed"
+}));
+const P=new URLSearchParams(location.search);
+const ROOM='rooms/'+(P.get('room')||'tmr-8f3kQ2xZ7vLm').replace(/[.#$\[\]\/]/g,'');
+let did;try{did=localStorage.getItem('did');if(!did){did=Math.random().toString(36).slice(2,10);localStorage.setItem('did',did)}}catch(e){did=Math.random().toString(36).slice(2,10)}
+const R=p=>ref(db,ROOM+'/'+p);
+const $=id=>document.getElementById(id);
+const p2=n=>String(n).padStart(2,'0');
+const fmt=t=>p2(Math.floor(t/3600))+':'+p2(Math.floor(t%3600/60))+':'+p2(t%60);
+const fT=s=>{s=Math.round(s);return s>=3600?Math.floor(s/3600)+':'+p2(Math.floor(s%3600/60))+':'+p2(s%60):p2(Math.floor(s/60))+':'+p2(s%60)};
+const zen=s=>String(s==null?'':s).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[：]/g,':').trim();
+/* 「12:30」「1230」「1:02:03」「10203」を秒にする。読めなければ null */
+function pT(str){str=zen(str);if(!str)return null;
+  if(str.includes(':')){const a=str.split(':').map(x=>x===''?NaN:+x);if(a.length>3||a.some(x=>!isFinite(x)||x<0))return null;return a.length===3?a[0]*3600+a[1]*60+a[2]:a[0]*60+a[1]}
+  if(!/^\d+$/.test(str)||str.length>6)return null;
+  const d=str.padStart(str.length<=4?4:6,'0');
+  return d.length===4?+d.slice(0,2)*60+ +d.slice(2):+d.slice(0,2)*3600+ +d.slice(2,4)*60+ +d.slice(4)}
+/* 秒数: 下2桁が秒、その上が分。120 → 1'20" / 22 → 22秒 / 80 → 読めない(エラー) */
+const calcDur=r=>{const t=zen(r.dtx);return r.k==='F'&&t===''?0:pDur(t)};
+function pDur(v){const d=zen(v).replace(/['"′″’”分秒:\s]/g,'');
+  if(!/^\d+$/.test(d)||d.length>5)return null;
+  const sec=+d.slice(-2),min=d.length>2?+d.slice(0,-2):0;
+  return sec>59?null:min*60+sec}
+const fD=s=>{if(s==null)return '--';s=Math.max(0,Math.round(s));return s<60?s+'"':Math.floor(s/60)+"'"+p2(s%60)+'"'};
+
+/* ===== 親機のタイマーを読む(読むだけ。書き込みはしない) ===== */
+let off=null,anchor=null,syncing=false,lastSync=0;
+let T={ok:false,running:false,base:0,value:0};
+const DBURL=db.app.options.databaseURL;
+const now=()=>anchor?anchor.srv+(performance.now()-anchor.perf):Date.now()+off;
+const tsec=()=>{if(!T.ok||(off===null&&!anchor))return null;const t=T.running?(now()-T.base)/1000:T.value;return Math.min(359999,Math.max(0,t))};
+const setConn=(t,c)=>{$('conn').textContent=t;$('conn').className='chip '+c};
+onValue(ref(db,'.info/connected'),s=>{if(s.val()){setConn('CONNECTED','w');resync(true);publish(true)}else setConn('UNLINK','ng')});
+onValue(ref(db,'.info/serverTimeOffset'),s=>{off=s.val()});
+onValue(R('timer'),s=>{const v=s.val()||{};T={ok:true,running:!!v.running,base:v.base||0,value:v.value||0}});
+async function resync(force){
+  if(syncing||(!force&&performance.now()-lastSync<3000))return;
+  syncing=true;
+  try{
+    let best=null;
+    for(let i=0;i<3;i++){
+      const c=new AbortController(),to=setTimeout(()=>c.abort(),4000);
+      const t0=performance.now();
+      const r=await fetch(DBURL+'/'+ROOM+'/ping/'+did+'.json',{method:'PUT',body:'{".sv":"timestamp"}',signal:c.signal});
+      const S=await r.json();
+      clearTimeout(to);
+      const t1=performance.now(),d=Date.now();
+      if(typeof S!=='number')throw new Error('bad');
+      const rtt=t1-t0;
+      if(!best||rtt<best.rtt)best={rtt,srv:S+rtt/2,perf:t1,date:d};
+    }
+    if(best.rtt<1500)anchor=best;
+  }catch(e){}
+  syncing=false;lastSync=performance.now();
+}
+setInterval(()=>{if(!anchor||performance.now()-lastSync>60000)resync()},5000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){resync(true);if(listening)wakeOn()}});
+
+/* ===== 進行データ ===== */
+const KEY='cmState1';
+let rows=[],stack=[],mode='edit';
+const S={thr:-50,hold:1.0,guard:2.0,fb:4,dev:''};
+const nid=()=>'r'+Math.random().toString(36).slice(2,9);
+function save(){try{localStorage.setItem(KEY,JSON.stringify({rows:rows.map(r=>({id:r.id,k:r.k,tx:r.tx,at:r.at,name:r.name,dur:r.dur,dtx:r.dtx,st:r.st==='oa'?'wait':r.st})),stack,S,mode}))}catch(e){}publish()}
+function load(){
+  try{const j=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(j&&Array.isArray(j.rows)){rows=j.rows.map(r=>({...r,dtx:r.dtx!=null?r.dtx:fD(r.dur),st:r.st==='done'?'done':'wait'}));stack=(j.stack||[]).filter(id=>rows.some(r=>r.id===id&&r.st==='done'));Object.assign(S,j.S||{});mode=j.mode==='run'?'run':'edit';return}
+  }catch(e){}
+  rows=[
+    {id:nid(),k:'Q',tx:'',at:null,name:'サンプルA',dur:15,dtx:'15',st:'wait'},
+    {id:nid(),k:'Q',tx:'',at:null,name:'サンプルB',dur:30,dtx:'30',st:'wait'},
+    {id:nid(),k:'F',tx:'00:01:00',at:60,name:'サンプルC',dur:82,dtx:`1'22"`,st:'wait'}];
+}
+
+/* ===== 子機(cmview.html)に、進行を知らせる =====
+   終わっていない行を、上から最大10行だけ、rooms/<room>/cm に書く。
+   OA中の行は「いつ始まったか」も書く(残りは子機が自分で数える)。 */
+let pubT=null,lastPub='',pubErr=false;
+function pubRows(){
+  const o={};let i=0;
+  rows.filter(r=>r.st!=='done').slice(0,10).forEach(r=>{
+    const x={k:r.k==='F'?'F':'Q',name:String(r.name||'').slice(0,60),st:r.st==='oa'?'oa':'wait'};
+    if(r.k==='F'&&r.at!=null&&isFinite(r.at))x.at=r.at;
+    if(r.dur!=null&&isFinite(r.dur))x.dur=r.dur;
+    if(r.st==='oa'&&r.how==='T')x.how='T';
+    if(r.st==='oa'&&r.how==='W'&&r.w0!=null&&isFinite(r.w0)){x.how='W';x.w0=Math.round(r.w0)}
+    o[i++]=x;
+  });
+  return o;
+}
+function publish(force){
+  clearTimeout(pubT);
+  pubT=setTimeout(()=>{
+    const data={rows:pubRows()};
+    const j=JSON.stringify(data);
+    if(!force&&j===lastPub)return;
+    lastPub=j;
+    set(R('cm'),{u:Math.round(now()),...data}).then(()=>{if(pubErr){pubErr=false;log('子機への送信が戻りました')}}).catch(e=>{lastPub='';if(!pubErr){pubErr=true;log('子機に送れません: '+(e.code||e.message))}});
+  },300);
+}
+
+load();
+const oaRow=()=>rows.find(r=>r.st==='oa');
+function remainOf(r){
+  const d=r.dur||0;
+  if(r.how==='T'){const t=tsec();return t==null?d:r.at+d-t}
+  return d-(now()-r.w0)/1000;
+}
+
+/* ===== ログ ===== */
+const LOG=[];
+function log(msg){
+  const t=tsec(),d=new Date();
+  LOG.unshift(p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds())+'  ['+(t==null?'--:--':fT(Math.floor(t)))+']  '+msg);
+  if(LOG.length>5)LOG.pop();
+  const el=$('log');el.textContent='';LOG.forEach(l=>{const x=document.createElement('div');x.textContent=l;el.appendChild(x)});
+}
+
+/* ===== 進行の操作 ===== */
+let guardUntil=0,prevT=null,lastSig='',lastBlink=-1,lastEnd=null;
+function blink(){const s=document.querySelectorAll('#display .separator');
+  s.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
+  setTimeout(()=>s.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
+function endRow(r){r.st='done';r.how=null;stack.push(r.id);guardUntil=performance.now()+S.guard*1000}
+/* 自然に終わった時刻を覚えておく(音が続いたときに、さかのぼる基準)。r は切り上げの見込み(秒) */
+function markEnd(overMs,r){lastEnd={perf:performance.now()-overMs,r}}
+function startRow(r,how,why,agoMs){
+  lastEnd=null;
+  const c=oaRow();if(c&&c!==r)endRow(c);
+  if(r.dur===0){r.st='done';stack.push(r.id);log((r.k==='Q'?'Q ':'')+'実行: '+(r.name||'(名前なし)')+' ('+why+')');save();lastSig='';return}
+  r.st='oa';r.how=how;if(how==='W')r.w0=now()-(agoMs||0);
+  log((r.k==='Q'?'Q ':'確定 ')+'開始: '+(r.name||'(名前なし)')+' ('+why+')');
+  save();lastSig='';
+}
+const firstWait=k=>rows.find(r=>r.st==='wait'&&(!k||r.k===k));
+/* 次に検知で始まるQ。待機中の確定がQより上にあれば、その確定が消えるまで無し */
+function nextQ(){for(const r of rows){if(r.st!=='wait')continue;if(r.k==='F')return null;return r}return null}
+function skip(){lastEnd=null;const c=oaRow();if(c){endRow(c);log('スキップ: '+(c.name||''))}else{const w=firstWait();if(!w)return;w.st='done';stack.push(w.id);log('スキップ: '+(w.name||''))}save();lastSig=''}
+function back(){
+  lastEnd=null;
+  const c=oaRow();
+  if(c){c.st='wait';c.how=null;guardUntil=0;log('バック(取り消し): '+(c.name||''))}
+  else{const id=stack.pop();const r=rows.find(x=>x.id===id);if(!r)return;r.st='wait';guardUntil=0;log('バック(戻した): '+(r.name||''))}
+  save();lastSig='';
+}
+function nowStart(){const w=firstWait();if(!w)return;startRow(w,'W','手で開始')}
+
+/* 0.1秒ごと: 終了の判定と、確定の開始 */
+function engine(){
+  const t=tsec();
+  const x=fmt(Math.floor(t==null?0:t)).replace(/:/g,'');
+  document.querySelectorAll('#display .digit').forEach((d,i)=>d.textContent=x[i]);
+  const ts=t==null?-1:Math.floor(t);
+  if(ts!==lastBlink){lastBlink=ts;if(ts>=0)blink()}
+  $('pts').textContent=t==null?'--':(T.running?'RUN':'STOP');
+  $('pts').className='chip '+(t==null?'':'w');
+  if(mode==='run'){
+    const c=oaRow();
+    if(c){
+      if(c.how==='T'){
+        if(t==null){}
+        else if(t<c.at-0.5){c.st='wait';c.how=null;log('時間が戻ったので待機に戻しました: '+(c.name||''));save()}
+        else if(t>=c.at+(c.dur||0)){endRow(c);markEnd((t-(c.at+(c.dur||0)))*1000,0);save()}
+      }else if(now()-c.w0>=(c.dur||0)*1000){const over=now()-(c.w0+(c.dur||0)*1000);endRow(c);markEnd(over,0.5);save()}
+    }
+    /* 確定: 走っているタイマーが、その時間を「またいだ」ときだけ開始(時間セットで飛び越えた場合は開始しない) */
+    if(t!=null&&T.running&&prevT!=null&&t>prevT&&t-prevT<3){
+      const f=rows.filter(r=>r.k==='F'&&r.st==='wait'&&r.at!=null&&r.at>prevT&&r.at<=t).sort((a,b)=>a.at-b.at)[0];
+      if(f)startRow(f,'T','時間');
+    }
+    prevT=t;
+    drawRun(false);
+  }else prevT=null;
+}
+setInterval(engine,100);
+
+/* ===== 進行中の画面 ===== */
+const late=(r,t)=>r.k==='F'&&r.st==='wait'&&(r.at==null||(t!=null&&T.running&&r.at<t-1));
+function drawRun(force){
+  const t=tsec();
+  const sig=rows.map(r=>r.id+r.st+(r.st==='oa'?Math.ceil(Math.max(0,remainOf(r))):'')+(late(r,t)?'L':'')).join()+'|'+(T.running?1:0);
+  if(!force&&sig===lastSig)return;
+  lastSig=sig;
+  const list=$('list');list.textContent='';
+  const doneN=rows.filter(r=>r.st==='done').length;
+  const vis=rows.filter(r=>r.st!=='done');
+  if(doneN){const d=document.createElement('div');d.className='done-n';d.textContent='終了 '+doneN+' 件';list.appendChild(d)}
+  if(!vis.length){const e=document.createElement('div');e.className='empty';e.textContent=rows.length?'すべて終了しました':'進行データがありません(「入力」で追加)';list.appendChild(e)}
+  vis.slice(0,12).forEach(r=>{
+    const oa=r.st==='oa',d=document.createElement('div');
+    d.className='row'+(oa?' oa':'')+(late(r,t)?' late':'');
+    const mk=(c,tx)=>{const x=document.createElement('div');x.className=c;x.textContent=tx;d.appendChild(x);return x};
+    mk('c1',oa?'OA':'');
+    mk('c2'+(r.k==='Q'?' q':''),r.k==='Q'?'Q':(r.at==null?'--:--:--':fmt(Math.round(r.at))));
+    mk('c3',r.name||'(名前なし)');
+    mk('c4',r.dur==null?'--':(r.dur===0&&r.k==='F')?'':fD(oa?Math.max(0,Math.ceil(remainOf(r))):r.dur));
+    list.appendChild(d);
+  });
+  if(vis.length>12){const d=document.createElement('div');d.className='done-n';d.textContent='ほか '+(vis.length-12)+' 件';list.appendChild(d)}
+}
+
+/* ===== 入力の画面 ===== */
+const durBad=r=>r.dur==null&&zen(r.dtx)!=='';
+const durNote=r=>r.dur==null?(zen(r.dtx)===''?'未入力':'読めません'):r.dur===0&&r.k==='F'&&!zen(r.dtx)?'秒数なし':fD(r.dur);
+function drawEdit(){
+  const tb=$('tb');tb.textContent='';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr');tr.dataset.id=r.id;tr.className='st-'+r.st;
+    tr.innerHTML='<td class="no"></td><td><select class="k"><option value="Q">Q</option><option value="F">確定</option></select></td><td><input class="at" placeholder="hh:mm:ss" autocomplete="off"></td><td><input class="nm" placeholder="CMの名前" autocomplete="off"></td><td><input class="du" inputmode="numeric" placeholder="例 120" autocomplete="off"><span class="dv"></span></td><td class="ops"><button class="up">↑</button><button class="dn">↓</button><button class="del">✕</button></td><td class="last"><button class="stb"></button></td>';
+    tr.querySelector('.no').textContent=i+1;
+    tr.querySelector('.k').value=r.k;
+    const at=tr.querySelector('.at');at.value=r.tx||'';at.disabled=r.k!=='F';
+    if(r.k==='F'&&r.at==null)at.classList.add('bad');
+    tr.querySelector('.nm').value=r.name||'';
+    const du=tr.querySelector('.du');du.value=r.dtx||'';du.classList.toggle('bad',durBad(r));
+    tr.querySelector('.dv').textContent=durNote(r);tr.querySelector('.dv').classList.toggle('bad',durBad(r));
+    tr.querySelector('.stb').textContent=r.st==='done'?'済み':r.st==='oa'?'OA':'待機';
+    tb.appendChild(tr);
+  });
+}
+const rowOf=el=>{const tr=el.closest('tr');return tr&&rows.find(r=>r.id===tr.dataset.id)};
+$('tb').addEventListener('input',e=>{
+  const r=rowOf(e.target);if(!r)return;
+  if(e.target.classList.contains('at')){r.tx=e.target.value;r.at=pT(r.tx);e.target.classList.toggle('bad',r.at==null)}
+  else if(e.target.classList.contains('nm'))r.name=e.target.value;
+  else if(e.target.classList.contains('du')){
+    r.dtx=e.target.value;r.dur=calcDur(r);
+    const dv=e.target.parentNode.querySelector('.dv');
+    e.target.classList.toggle('bad',durBad(r));dv.classList.toggle('bad',durBad(r));
+    dv.textContent=durNote(r);
+  }
+  save();
+});
+/* 欄を出るとき: 読めた値は、きれいな表記に直す */
+$('tb').addEventListener('focusout',e=>{
+  const r=rowOf(e.target);if(!r)return;
+  if(e.target.classList.contains('du')&&r.dur!=null&&zen(r.dtx)!==''){r.dtx=fD(r.dur);e.target.value=r.dtx;save()}
+  else if(e.target.classList.contains('at')&&r.at!=null){r.tx=fmt(Math.round(r.at));e.target.value=r.tx;save()}
+});
+$('tb').addEventListener('change',e=>{
+  const r=rowOf(e.target);if(!r)return;
+  if(e.target.classList.contains('k')){r.k=e.target.value;r.dur=calcDur(r);drawEdit();save()}
+});
+$('tb').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const r=rowOf(b);if(!r)return;const i=rows.indexOf(r);
+  if(b.classList.contains('up')&&i>0){rows.splice(i,1);rows.splice(i-1,0,r)}
+  else if(b.classList.contains('dn')&&i<rows.length-1){rows.splice(i,1);rows.splice(i+1,0,r)}
+  else if(b.classList.contains('del')){rows.splice(i,1);stack=stack.filter(x=>x!==r.id)}
+  else if(b.classList.contains('stb')){
+    if(r.st==='done'){r.st='wait';stack=stack.filter(x=>x!==r.id)}
+    else if(r.st==='wait'){r.st='done';stack.push(r.id)}
+  }else return;
+  drawEdit();save();lastSig='';
+});
+$('add').onclick=()=>{rows.push({id:nid(),k:'Q',tx:'',at:null,name:'',dur:null,dtx:'',st:'wait'});drawEdit();save();const n=document.querySelectorAll('#tb .nm');if(n.length)n[n.length-1].focus()};
+$('resetSt').onclick=()=>{if(!confirm('全部を「待機」に戻します。よろしいですか?'))return;rows.forEach(r=>{r.st='wait';r.how=null});stack=[];guardUntil=0;drawEdit();save();lastSig=''};
+$('clearAll').onclick=()=>{if(!confirm('一覧を全部消します。よろしいですか?'))return;rows=[];stack=[];drawEdit();save();lastSig=''};
+$('pasteAdd').onclick=()=>{
+  let n=0;
+  $('paste').value.split(/\r?\n/).forEach(line=>{
+    if(!line.trim())return;
+    const f=line.split(/\t|,|，/).map(x=>x.trim());
+    const kk=/^[QqＱ]/.test(f[0])?'Q':/^確/.test(f[0])?'F':null;
+    if(!kk)return;
+    let tx='',name,dur;
+    if(kk==='F'){tx=f[1]||'';name=f[2]||'';dur=f[3]}
+    else if(f.length>=4){name=f[2]||'';dur=f[3]}
+    else{name=f[1]||'';dur=f[2]}
+    const row={id:nid(),k:kk,tx,at:kk==='F'?pT(tx):null,name,dtx:String(dur||''),st:'wait'};
+    row.dur=calcDur(row);if(row.dur!=null&&row.dtx.trim()!=='')row.dtx=fD(row.dur);
+    rows.push(row);n++;
+  });
+  $('paste').value='';drawEdit();save();lastSig='';
+  if(n)log('一括入力: '+n+' 件を追加');
+};
+$('bBack').onclick=back;$('bSkip').onclick=skip;$('bNow').onclick=nowStart;
+function fitRun(){const w=$('display').getBoundingClientRect().right-18;if(w>0)document.documentElement.style.setProperty('--runw',Math.round(w)+'px')}
+addEventListener('resize',fitRun);if(document.fonts)document.fonts.ready.then(fitRun);
+function setMode(m){
+  mode=m;document.body.className=m;
+  $('mEdit').classList.toggle('on',m==='edit');$('mRun').classList.toggle('on',m==='run');
+  prevT=null;lastSig='';fitRun();
+  if(m==='edit')drawEdit();else drawRun(true);
+  save();
+}
+$('mEdit').onclick=()=>setMode('edit');
+$('mRun').onclick=()=>setMode('run');
+
+/* ===== 音 ===== */
+let listening=false,actx=null,stream=null,analyser=null,abuf=null,wl=null;
+let aState='silent',silentSince=null,soundSince=null,pollT=null,loudSince=null,quietSince=null;
+const CONF=100; /* 音が入ってから、この時間(ミリ秒)つづいたら「音あり」と確定 */
+const dbPct=d=>Math.max(0,Math.min(100,(d+90)/90*100));
+function drawSet(){
+  $('sThr').value=S.thr;$('sHold').value=S.hold;$('sGuard').value=S.guard;$('sFb').value=S.fb;
+  $('vThr').textContent=S.thr+' dB';$('vHold').textContent=(+S.hold).toFixed(1)+' 秒';$('vGuard').textContent=(+S.guard).toFixed(1)+' 秒';$('vFb').textContent=(+S.fb).toFixed(1)+' 秒';
+  $('mthr').style.left='calc('+dbPct(S.thr)+'% - 1px)';
+}
+[['sThr','thr'],['sHold','hold'],['sGuard','guard'],['sFb','fb']].forEach(([id,k])=>{$(id).oninput=e=>{S[k]=+e.target.value;drawSet();save()}});
+drawSet();
+async function listDevices(){
+  try{
+    const ds=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+    const sel=$('dev');sel.textContent='';
+    const o0=document.createElement('option');o0.value='';o0.textContent='(標準のマイク)';sel.appendChild(o0);
+    ds.forEach((d,i)=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('入力 '+(i+1));sel.appendChild(o)});
+    sel.value=ds.some(d=>d.deviceId===S.dev)?S.dev:'';
+  }catch(e){}
+}
+$('dev').onchange=e=>{S.dev=e.target.value;save();if(listening){stopAudio();startAudio()}};
+if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener('devicechange',listDevices);
+async function wakeOn(){try{if('wakeLock' in navigator&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+function setDet(on){$('det').textContent=on?'DETECT':'DETECT OFF';$('det').className='chip '+(on?'det':'off')}
+async function startAudio(){
+  try{
+    const base={echoCancellation:false,noiseSuppression:false,autoGainControl:false};
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:S.dev?{...base,deviceId:{exact:S.dev}}:base})}
+    catch(e){if(S.dev){S.dev='';stream=await navigator.mediaDevices.getUserMedia({audio:base})}else throw e}
+    actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
+    const src=actx.createMediaStreamSource(stream);
+    analyser=actx.createAnalyser();analyser.fftSize=2048;
+    src.connect(analyser);
+    abuf=new Float32Array(analyser.fftSize);
+    listening=true;setDet(true);aState='silent';silentSince=performance.now();soundSince=null;loudSince=null;quietSince=null;
+    $('abtn').textContent='🎤 停止';$('abtn').classList.add('on');
+    wakeOn();await listDevices();
+    clearInterval(pollT);pollT=setInterval(poll,40);
+    log('音を聞き始めました');
+  }catch(e){
+    listening=false;log('マイクを使えません: '+(e.name||e.message));
+  }
+}
+function stopAudio(){
+  listening=false;setDet(false);clearInterval(pollT);
+  try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  try{actx&&actx.close()}catch(e){}
+  stream=null;actx=null;analyser=null;
+  try{wl&&wl.release()}catch(e){};wl=null;
+  $('abtn').textContent='🎤 音を聞く';$('abtn').classList.remove('on');
+  $('mbar').style.width='0';$('mbar').classList.remove('snd');$('adb').textContent='-- dB';
+  $('snd').textContent='停止中';$('snd').className='chip';
+}
+$('abtn').onclick=()=>{listening?(stopAudio(),log('音を聞くのを止めました')):startAudio()};
+/* いま検知してよい状態か */
+function armed(){
+  if(mode!=='run')return{ok:false,why:'入力画面'};
+  if(oaRow())return{ok:false,why:'OA中'};
+  if(performance.now()<guardUntil)return{ok:false,why:'終了直後'};
+  if(!nextQ())return{ok:false,why:firstWait('Q')?'確定待ち':'Qの行なし'};
+  return{ok:true};
+}
+function onset(){
+  const a=armed();
+  if(!a.ok){log('音の始まり(検知しない: '+a.why+')');return}
+  startRow(nextQ(),'W','音');
+}
+/* 自然に終わったあと、音が「さかのぼる時間」つづいていたら、次のQがさかのぼって始まっていたことにする */
+function fallback(t){
+  if(!lastEnd)return;
+  if(t>lastEnd.perf+15000){lastEnd=null;return}
+  if(loudSince==null||mode!=='run'||oaRow())return;
+  const q=nextQ();if(!q)return;
+  if(loudSince>lastEnd.perf+2000)return;
+  const s0=Math.max(loudSince,lastEnd.perf);
+  if(t-s0<S.fb*1000)return;
+  const startPerf=loudSince>=lastEnd.perf?loudSince:lastEnd.perf-lastEnd.r*1000;
+  startRow(q,'W','音が'+S.fb+'秒続いた',t-startPerf);
+}
+function poll(){
+  if(!analyser)return;
+  analyser.getFloatTimeDomainData(abuf);
+  let s=0;for(let i=0;i<abuf.length;i++)s+=abuf[i]*abuf[i];
+  const rms=Math.sqrt(s/abuf.length),d=rms>1e-6?20*Math.log10(rms):-120;
+  const t=performance.now(),loud=d>=S.thr;
+  if(aState==='silent'){
+    if(loud){
+      if(soundSince==null)soundSince=t;
+      if(t-soundSince>=CONF){
+        const quiet=soundSince-silentSince;
+        aState='sound';silentSince=null;soundSince=null;
+        if(quiet>=S.hold*1000)onset();
+      }
+    }else soundSince=null;
+  }else if(!loud){aState='silent';silentSince=t;soundSince=null}
+  /* 音が続いている長さ(0.3秒より短い途切れは、続いているとみなす) */
+  if(loud){quietSince=null;if(loudSince==null)loudSince=t}
+  else{if(quietSince==null)quietSince=t;if(t-quietSince>=300)loudSince=null}
+  fallback(t);
+  $('mbar').style.width=dbPct(d)+'%';$('mbar').classList.toggle('snd',loud);
+  $('adb').textContent=(d<=-120?'-∞':Math.round(d))+' dB';
+  const a=armed();
+  const sn=aState==='silent'?'無音 '+((t-silentSince)/1000).toFixed(1)+'s':'音あり';
+  $('snd').textContent=a.ok?(aState==='silent'?sn:'音あり'):'検知しない';
+  $('snd').className='chip '+(a.ok?'ok':'wait');
+  $('snd').title=a.ok?'検知待ち':a.why;
+}
+
+/* 起動 */
+setMode(mode);
+</script>
+</body>
+</html>
