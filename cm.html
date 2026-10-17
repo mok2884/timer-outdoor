@@ -139,7 +139,8 @@ footer .chip,footer .chip.ok,footer .chip.wait{font-size:11px;padding:1px 7px;co
       <div class="srow"><span>無音が続く時間</span><input id="sHold" type="range" min="0.3" max="5" step="0.1"><b id="vHold"></b></div>
       <div class="srow"><span>終了後に検知しない</span><input id="sGuard" type="range" min="0" max="10" step="0.5"><b id="vGuard"></b></div>
       <div class="srow"><span>音が続いたらさかのぼる</span><input id="sFb" type="range" min="2" max="10" step="0.5"><b id="vFb"></b></div>
-      <div class="hint">しきい値より大きい音を「音あり」、小さい音を「無音」とみなします。無音が上の時間つづいたあとに音が入ると、Qの開始とみなします。<br>CMが連続して、無音が検知できなかったときのために、前のイベントが終わったあと、音が「さかのぼる時間」つづいたら、次のQが少し前から始まっていたことにします(普段の終わりには影響しません)。</div>
+      <div class="srow"><span>Qを進めて始める</span><input id="sAdv" type="range" min="0" max="1.5" step="0.1"><b id="vAdv"></b></div>
+      <div class="hint">しきい値より大きい音を「音あり」、小さい音を「無音」とみなします。無音が上の時間つづいたあとに音が入ると、Qの開始とみなします。<br>CMが連続して、無音が検知できなかったときのために、前のイベントが終わったあと、音が「さかのぼる時間」つづいたら、次のQが少し前から始まっていたことにします(普段の終わりには影響しません)。<br>Qの秒数は切り上げなので、実際の音は少し早く終わります。そのぶん、Qは「進めて始める」秒数だけ進めた状態から数えます(確定には使いません)。</div>
     </details>
   </section>
   <section id="runView">
@@ -225,7 +226,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 /* ===== 進行データ ===== */
 const KEY='cmState1';
 let rows=[],stack=[],mode='edit';
-const S={thr:-50,hold:1.0,guard:2.0,fb:4,dev:''};
+const S={thr:-50,hold:1.0,guard:2.0,fb:4,adv:1.0,dev:''};
 const nid=()=>'r'+Math.random().toString(36).slice(2,9);
 function save(){try{localStorage.setItem(KEY,JSON.stringify({rows:rows.map(r=>({id:r.id,k:r.k,tx:r.tx,at:r.at,name:r.name,dur:r.dur,dtx:r.dtx,st:r.st==='oa'?'wait':r.st})),stack,S,mode}))}catch(e){}publish()}
 function load(){
@@ -294,7 +295,9 @@ function startRow(r,how,why,agoMs){
   lastEnd=null;
   const c=oaRow();if(c&&c!==r)endRow(c);
   if(r.dur===0){r.st='done';stack.push(r.id);log((r.k==='Q'?'Q ':'')+'実行: '+(r.name||'(名前なし)')+' ('+why+')');save();lastSig='';return}
-  r.st='oa';r.how=how;if(how==='W')r.w0=now()-(agoMs||0);
+  r.st='oa';r.how=how;
+  /* Qは、尺の切り上げぶん、設定の秒数だけ進めた状態から始める(確定には使わない) */
+  if(how==='W')r.w0=now()-(agoMs||0)-(r.k==='Q'?S.adv*1000:0);
   log((r.k==='Q'?'Q ':'確定 ')+'開始: '+(r.name||'(名前なし)')+' ('+why+')');
   save();lastSig='';
 }
@@ -327,7 +330,7 @@ function engine(){
         if(t==null){}
         else if(t<c.at-0.5){c.st='wait';c.how=null;log('時間が戻ったので待機に戻しました: '+(c.name||''));save()}
         else if(t>=c.at+(c.dur||0)){endRow(c);markEnd((t-(c.at+(c.dur||0)))*1000,0);save()}
-      }else if(now()-c.w0>=(c.dur||0)*1000){const over=now()-(c.w0+(c.dur||0)*1000);endRow(c);markEnd(over,0.5);save()}
+      }else if(now()-c.w0>=(c.dur||0)*1000){const over=now()-(c.w0+(c.dur||0)*1000);endRow(c);markEnd(over,c.k==='Q'?Math.max(0,0.5-S.adv):0.5);save()}
     }
     /* 確定: 走っているタイマーが、その時間を「またいだ」ときだけ開始(時間セットで飛び越えた場合は開始しない) */
     if(t!=null&&T.running&&prevT!=null&&t>prevT&&t-prevT<3){
@@ -459,11 +462,11 @@ let aState='silent',silentSince=null,soundSince=null,pollT=null,loudSince=null,q
 const CONF=100; /* 音が入ってから、この時間(ミリ秒)つづいたら「音あり」と確定 */
 const dbPct=d=>Math.max(0,Math.min(100,(d+90)/90*100));
 function drawSet(){
-  $('sThr').value=S.thr;$('sHold').value=S.hold;$('sGuard').value=S.guard;$('sFb').value=S.fb;
-  $('vThr').textContent=S.thr+' dB';$('vHold').textContent=(+S.hold).toFixed(1)+' 秒';$('vGuard').textContent=(+S.guard).toFixed(1)+' 秒';$('vFb').textContent=(+S.fb).toFixed(1)+' 秒';
+  $('sThr').value=S.thr;$('sHold').value=S.hold;$('sGuard').value=S.guard;$('sFb').value=S.fb;$('sAdv').value=S.adv;
+  $('vThr').textContent=S.thr+' dB';$('vHold').textContent=(+S.hold).toFixed(1)+' 秒';$('vGuard').textContent=(+S.guard).toFixed(1)+' 秒';$('vFb').textContent=(+S.fb).toFixed(1)+' 秒';$('vAdv').textContent=(+S.adv).toFixed(1)+' 秒';
   $('mthr').style.left='calc('+dbPct(S.thr)+'% - 1px)';
 }
-[['sThr','thr'],['sHold','hold'],['sGuard','guard'],['sFb','fb']].forEach(([id,k])=>{$(id).oninput=e=>{S[k]=+e.target.value;drawSet();save()}});
+[['sThr','thr'],['sHold','hold'],['sGuard','guard'],['sFb','fb'],['sAdv','adv']].forEach(([id,k])=>{$(id).oninput=e=>{S[k]=+e.target.value;drawSet();save()}});
 drawSet();
 async function listDevices(){
   try{
@@ -517,10 +520,11 @@ function armed(){
   if(!nextQ())return{ok:false,why:firstWait('Q')?'確定待ち':'Qの行なし'};
   return{ok:true};
 }
-function onset(){
+/* agoMs: 音が入ってから「音あり」と確定するまでの時間。開始の時刻は、音が入った瞬間にする */
+function onset(agoMs){
   const a=armed();
   if(!a.ok){log('音の始まり(検知しない: '+a.why+')');return}
-  startRow(nextQ(),'W','音');
+  startRow(nextQ(),'W','音',agoMs);
 }
 /* 自然に終わったあと、音が「さかのぼる時間」つづいていたら、次のQがさかのぼって始まっていたことにする */
 function fallback(t){
@@ -544,9 +548,9 @@ function poll(){
     if(loud){
       if(soundSince==null)soundSince=t;
       if(t-soundSince>=CONF){
-        const quiet=soundSince-silentSince;
+        const quiet=soundSince-silentSince,ago=t-soundSince;
         aState='sound';silentSince=null;soundSince=null;
-        if(quiet>=S.hold*1000)onset();
+        if(quiet>=S.hold*1000)onset(ago);
       }
     }else soundSince=null;
   }else if(!loud){aState='silent';silentSince=t;soundSince=null}
