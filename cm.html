@@ -138,9 +138,9 @@ footer .chip,footer .chip.ok,footer .chip.wait{font-size:11px;padding:1px 7px;co
       <div class="srow"><span>音あり のしきい値</span><input id="sThr" type="range" min="-90" max="-10" step="1"><b id="vThr"></b></div>
       <div class="srow"><span>無音が続く時間</span><input id="sHold" type="range" min="0.3" max="5" step="0.1"><b id="vHold"></b></div>
       <div class="srow"><span>終了後に検知しない</span><input id="sGuard" type="range" min="0" max="10" step="0.5"><b id="vGuard"></b></div>
-      <div class="srow"><span>音が続いたらさかのぼる</span><input id="sFb" type="range" min="2" max="10" step="0.5"><b id="vFb"></b></div>
+      <div class="srow"><span>連続とみなす範囲(終了後)</span><input id="sFb" type="range" min="2" max="10" step="0.5"><b id="vFb"></b></div>
       <div class="srow"><span>Qを進めて始める</span><input id="sAdv" type="range" min="0" max="1.5" step="0.1"><b id="vAdv"></b></div>
-      <div class="hint">しきい値より大きい音を「音あり」、小さい音を「無音」とみなします。無音が上の時間つづいたあとに音が入ると、Qの開始とみなします。<br>CMが連続して、無音が検知できなかったときのために、前のイベントが終わったあと、音が「さかのぼる時間」つづいたら、次のQが少し前から始まっていたことにします(普段の終わりには影響しません)。<br>Qの秒数は切り上げなので、実際の音は少し早く終わります。そのぶん、Qは「進めて始める」秒数だけ進めた状態から数えます(確定には使いません)。</div>
+      <div class="hint">しきい値より大きい音を「音あり」、小さい音を「無音」とみなします。無音が上の時間つづいたあとに音が入ると、Qの開始とみなします。<br>CMを連続で打ったときのために、行が終わってから「終了後に検知しない」の間(初期値2秒)に音があり、さらにそのあと「連続とみなす範囲」まで(初期値4秒)の間にも音があれば、次のQは、前の行が終わった瞬間から始まっていたことにします。それ以外は、いつもどおり、無音のあとに音が入った瞬間から始まります。秒数なしの確定は、時間になった瞬間を「終わり」とみなします。<br>Qの秒数は切り上げなので、実際の音は少し早く終わります。そのぶん、Qは「進めて始める」秒数だけ進めた状態から数えます(確定には使いません)。</div>
     </details>
   </section>
   <section id="runView">
@@ -289,12 +289,13 @@ function blink(){const s=document.querySelectorAll('#display .separator');
   s.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
   setTimeout(()=>s.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
 function endRow(r){r.st='done';r.how=null;stack.push(r.id);guardUntil=performance.now()+S.guard*1000}
-/* 自然に終わった時刻を覚えておく(音が続いたときに、さかのぼる基準)。r は切り上げの見込み(秒) */
-function markEnd(overMs,r){lastEnd={perf:performance.now()-overMs,r}}
+/* 行が終わった瞬間を覚えておく(連続で打ったかを見る基準)。s1 は「終わってから2秒の間に音があった」 */
+function markEnd(overMs){lastEnd={perf:performance.now()-overMs,s1:false}}
 function startRow(r,how,why,agoMs){
   lastEnd=null;
   const c=oaRow();if(c&&c!==r)endRow(c);
-  if(r.dur===0){r.st='done';stack.push(r.id);log((r.k==='Q'?'Q ':'')+'実行: '+(r.name||'(名前なし)')+' ('+why+')');save();lastSig='';return}
+  /* 秒数なし: すぐ消える。時間になった瞬間を「終わり」とみなす */
+  if(r.dur===0){r.st='done';stack.push(r.id);guardUntil=performance.now()+S.guard*1000;markEnd(0);log((r.k==='Q'?'Q ':'')+'実行: '+(r.name||'(名前なし)')+' ('+why+')');save();lastSig='';return}
   r.st='oa';r.how=how;
   /* Qは、尺の切り上げぶん、設定の秒数だけ進めた状態から始める(確定には使わない) */
   if(how==='W')r.w0=now()-(agoMs||0)-(r.k==='Q'?S.adv*1000:0);
@@ -329,8 +330,8 @@ function engine(){
       if(c.how==='T'){
         if(t==null){}
         else if(t<c.at-0.5){c.st='wait';c.how=null;log('時間が戻ったので待機に戻しました: '+(c.name||''));save()}
-        else if(t>=c.at+(c.dur||0)){endRow(c);markEnd((t-(c.at+(c.dur||0)))*1000,0);save()}
-      }else if(now()-c.w0>=(c.dur||0)*1000){const over=now()-(c.w0+(c.dur||0)*1000);endRow(c);markEnd(over,c.k==='Q'?Math.max(0,0.5-S.adv):0.5);save()}
+        else if(t>=c.at+(c.dur||0)){endRow(c);markEnd((t-(c.at+(c.dur||0)))*1000);save()}
+      }else if(now()-c.w0>=(c.dur||0)*1000){const over=now()-(c.w0+(c.dur||0)*1000);endRow(c);markEnd(over);save()}
     }
     /* 確定: 走っているタイマーが、その時間を「またいだ」ときだけ開始(時間セットで飛び越えた場合は開始しない) */
     if(t!=null&&T.running&&prevT!=null&&t>prevT&&t-prevT<3){
@@ -458,7 +459,7 @@ $('mRun').onclick=()=>setMode('run');
 
 /* ===== 音 ===== */
 let listening=false,actx=null,stream=null,analyser=null,abuf=null,wl=null;
-let aState='silent',silentSince=null,soundSince=null,pollT=null,loudSince=null,quietSince=null;
+let aState='silent',silentSince=null,soundSince=null,pollT=null,runSince=null;
 const CONF=100; /* 音が入ってから、この時間(ミリ秒)つづいたら「音あり」と確定 */
 const dbPct=d=>Math.max(0,Math.min(100,(d+90)/90*100));
 function drawSet(){
@@ -492,7 +493,7 @@ async function startAudio(){
     analyser=actx.createAnalyser();analyser.fftSize=2048;
     src.connect(analyser);
     abuf=new Float32Array(analyser.fftSize);
-    listening=true;setDet(true);aState='silent';silentSince=performance.now();soundSince=null;loudSince=null;quietSince=null;
+    listening=true;setDet(true);aState='silent';silentSince=performance.now();soundSince=null;runSince=null;
     $('abtn').textContent='🎤 停止';$('abtn').classList.add('on');
     wakeOn();await listDevices();
     clearInterval(pollT);pollT=setInterval(poll,40);
@@ -526,17 +527,23 @@ function onset(agoMs){
   if(!a.ok){log('音の始まり(検知しない: '+a.why+')');return}
   startRow(nextQ(),'W','音',agoMs);
 }
-/* 自然に終わったあと、音が「さかのぼる時間」つづいていたら、次のQがさかのぼって始まっていたことにする */
-function fallback(t){
+/* 連続で打ったか: 行が終わってから
+   ・2秒(終了後に検知しない)の間に音があり、
+   ・さらに 2〜4秒(連続とみなす範囲)の間にも音があれば、
+   次のQは、前の行が終わった瞬間から始まっていたことにする。
+   それ以外は何もしない(いつもどおり、無音のあとの音で始まる)。
+   「音がある」は 0.1秒以上続いた音。 */
+function contin(t,heard){
   if(!lastEnd)return;
-  if(t>lastEnd.perf+15000){lastEnd=null;return}
-  if(loudSince==null||mode!=='run'||oaRow())return;
-  const q=nextQ();if(!q)return;
-  if(loudSince>lastEnd.perf+2000)return;
-  const s0=Math.max(loudSince,lastEnd.perf);
-  if(t-s0<S.fb*1000)return;
-  const startPerf=loudSince>=lastEnd.perf?loudSince:lastEnd.perf-lastEnd.r*1000;
-  startRow(q,'W','音が'+S.fb+'秒続いた',t-startPerf);
+  if(mode!=='run'||oaRow()){lastEnd=null;return}
+  const el=t-lastEnd.perf,g=S.guard*1000,e=Math.max(S.fb*1000,g+500);
+  if(el<g){if(heard)lastEnd.s1=true;return}
+  if(!lastEnd.s1){lastEnd=null;return}
+  if(el>=e){log('連続なし: '+(g/1000)+'〜'+(e/1000)+'秒に音なし');lastEnd=null;return}
+  if(!heard)return;
+  const q=nextQ();
+  if(!q){log('連続の音あり(始めない: '+(firstWait('Q')?'確定待ち':'Qの行なし')+')');lastEnd=null;return}
+  startRow(q,'W','連続',t-lastEnd.perf);
 }
 function poll(){
   if(!analyser)return;
@@ -544,6 +551,8 @@ function poll(){
   let s=0;for(let i=0;i<abuf.length;i++)s+=abuf[i]*abuf[i];
   const rms=Math.sqrt(s/abuf.length),d=rms>1e-6?20*Math.log10(rms):-120;
   const t=performance.now(),loud=d>=S.thr;
+  if(loud){if(runSince==null)runSince=t}else runSince=null;
+  contin(t,runSince!=null&&t-runSince>=CONF);
   if(aState==='silent'){
     if(loud){
       if(soundSince==null)soundSince=t;
@@ -554,10 +563,6 @@ function poll(){
       }
     }else soundSince=null;
   }else if(!loud){aState='silent';silentSince=t;soundSince=null}
-  /* 音が続いている長さ(0.3秒より短い途切れは、続いているとみなす) */
-  if(loud){quietSince=null;if(loudSince==null)loudSince=t}
-  else{if(quietSince==null)quietSince=t;if(t-quietSince>=300)loudSince=null}
-  fallback(t);
   $('mbar').style.width=dbPct(d)+'%';$('mbar').classList.toggle('snd',loud);
   $('adb').textContent=(d<=-120?'-∞':Math.round(d))+' dB';
   const a=armed();
