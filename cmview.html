@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080d16">
 <title>CM 進行(表示)</title>
-<!-- 数字用フォント: 届くまで画面を止めない読み込み方(届かなければ代わりの字体で表示) -->
-<link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet" media="print" onload="this.media='all'">
+<!-- タイマーの数字は自作の7セグ(外部フォントなし)。文字用フォント: 届くまで画面を止めない読み込み方 -->
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 *{box-sizing:border-box;touch-action:manipulation}
@@ -17,9 +16,8 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 #app{position:absolute;left:50%;top:0;transform-origin:top center;transform:translateX(-50%);padding:14px 10px 0 24px;width:max-content}
 
 /* タイマー枠(cm.html と同じ形) */
-#display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;font-family:'DS-Digital',monospace;border:3px solid #fff;border-radius:.114em;padding:.2em .31em;background:#000;width:max-content}
-.digit{width:.4545em;text-align:right;display:inline-block;margin:0 .068em;font-style:italic;color:#ff4500}
-.separator{width:.295em;text-align:center;display:inline-block;color:#f00;font-size:1em;font-weight:900;transform:translateX(.034em)}
+#display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;border:3px solid #fff;border-radius:.114em;padding:.2em .31em;background:#000;width:max-content}
+#display svg{display:block;height:.86em;width:auto;overflow:visible}
 
 /* CUE用の空き(今は何も出さない) */
 #cueSlot{height:26px}
@@ -52,7 +50,7 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 <button id="pinBtn" aria-label="PIN" title="手前に小さく出す"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button>
 <div id="app">
   <span id="unl">UNLINK</span>
-  <div id="display"><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span><span class="separator">:</span><span class="digit">0</span><span class="digit">0</span></div>
+  <div id="display"></div>
   <div id="cueSlot"></div>
   <div id="list"></div>
 </div>
@@ -74,7 +72,61 @@ let did;try{did=localStorage.getItem('did');if(!did){did=Math.random().toString(
 const R=p=>ref(db,ROOM+'/'+p);
 /* 画面の部品(小窓に移しても、そのまま使えるように、最初に覚えておく) */
 const app=document.getElementById('app'),disp=document.getElementById('display'),list=document.getElementById('list'),unl=document.getElementById('unl'),pinBtn=document.getElementById('pinBtn');
-const digits=disp.querySelectorAll('.digit'),seps=disp.querySelectorAll('.separator');
+
+/* ===== 7セグの数字(自作。外部フォントは使わない) =====
+   見た目の調整は、この SEG の数字を変えるだけでできる */
+const SEG={
+  T:10.5,     /* 線の太さ */
+  gap:37,     /* 数字の間(2桁の中) */
+  pg:102,     /* 2桁ごとの間(コロンのある所) */
+  sk:6,       /* 傾き(度) */
+  mu:7,       /* むら(%)。線ごとの明るさの差 */
+  dEdge:'#ee3418',dMid:'#ff5232', /* 数字の色(線の端/真ん中) */
+  dGlow:1.8,  /* 数字のにじみ */
+  cr:8.5,     /* コロンの大きさ */
+  cs:52,      /* コロンの縦の間 */
+  cCol:'#d20c28', /* コロンの色 */
+  cGlow:4.5,  /* コロンのにじみ */
+  cOff:.2     /* コロンが消えているときの濃さ */
+};
+function seg7(box){
+  const NS='http://www.w3.org/2000/svg',W=56,H=104,G=1.8,M=H/2,T=SEG.T;
+  const S={a:[[G,0],[W-G,0],[W-T-G,T],[T+G,T]],d:[[G,H],[W-G,H],[W-T-G,H-T],[T+G,H-T]],
+    g:[[G,M],[T+G,M-T/2],[W-T-G,M-T/2],[W-G,M],[W-T-G,M+T/2],[T+G,M+T/2]],
+    f:[[0,G],[T,T+G],[T,M-T/2-G],[0,M-G]],e:[[0,H-G],[T,H-T-G],[T,M+T/2+G],[0,M+G]],
+    b:[[W,G],[W-T,T+G],[W-T,M-T/2-G],[W,M-G]],c:[[W,H-G],[W-T,H-T-G],[W-T,M+T/2+G],[W,M+G]]};
+  const MAP={0:'abcdef',1:'bc',2:'abged',3:'abgcd',4:'fgbc',5:'afgcd',6:'afgedc',7:'abc',8:'abcdefg',9:'abcdfg'};
+  const xs=[],cx=[];let x=0;
+  for(let i=0;i<3;i++){xs.push(x,x+W+SEG.gap);x+=W*2+SEG.gap;if(i<2){cx.push(x+SEG.pg/2);x+=SEG.pg}}
+  const off=Math.tan(SEG.sk*Math.PI/180)*H;
+  const svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('viewBox','-6 -8 '+(x+off+12)+' '+(H+16));svg.setAttribute('aria-hidden','true');
+  const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset=".5" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
+  svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
+    '<filter id="sgG" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="'+SEG.dGlow+'" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
+    '<filter id="sgC" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="'+SEG.cGlow+'" result="b"/><feGaussianBlur in="SourceGraphic" stdDeviation="2" result="c"/><feMerge><feMergeNode in="b"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+  let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+  const digs=xs.map(x0=>{
+    const g=document.createElementNS(NS,'g');
+    g.setAttribute('transform','translate('+(x0+off)+',0) skewX(-'+SEG.sk+')');g.setAttribute('filter','url(#sgG)');
+    const d={};
+    Object.entries(S).forEach(([k,pts])=>{const q=document.createElementNS(NS,'polygon');q.setAttribute('points',pts.map(z=>z.join(',')).join(' '));q.setAttribute('fill','url(#'+('agd'.includes(k)?'sgH':'sgV')+')');q.style.opacity=0;d[k]=[q,(1-SEG.mu/100+rnd()*SEG.mu/100).toFixed(3)];g.appendChild(q)});
+    svg.appendChild(g);return d;
+  });
+  const cols=cx.map(c0=>{
+    const g=document.createElementNS(NS,'g');g.setAttribute('filter','url(#sgC)');
+    [M-SEG.cs/2,M+SEG.cs/2].forEach(y=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
+    svg.appendChild(g);return g;
+  });
+  box.textContent='';box.appendChild(svg);
+  let last='';
+  return{
+    /* s は6文字の数字(例 "001234") */
+    set(s){if(s===last)return;last=s;digs.forEach((d,i)=>{const on=MAP[s[i]]||'';Object.entries(d).forEach(([k,[q,b]])=>{q.style.opacity=on.includes(k)?b:0})})},
+    colon(on){cols.forEach(g=>g.style.opacity=on?1:SEG.cOff)}
+  };
+}
+const SG=seg7(disp);SG.set('000000');SG.colon(true);
 const p2=n=>String(n).padStart(2,'0');
 const fmt=t=>p2(Math.floor(t/3600))+':'+p2(Math.floor(t%3600/60))+':'+p2(t%60);
 const fD=s=>{if(s==null)return '--';s=Math.max(0,Math.round(s));return s<60?s+'"':Math.floor(s/60)+"'"+p2(s%60)+'"'};
@@ -135,15 +187,13 @@ const late=(r,t)=>r.k==='F'&&r.st!=='oa'&&(r.at==null||(t!=null&&T.running&&r.at
 
 /* ===== 描く ===== */
 let lastBlink=-1;
-function blink(){
-  seps.forEach(e=>{e.style.opacity=1;e.style.color='#ff2222';e.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)'});
-  setTimeout(()=>seps.forEach(e=>{e.style.opacity=.2;e.style.textShadow='none'}),500)}
+function blink(){SG.colon(true);setTimeout(()=>SG.colon(false),500)}
 function draw(){
   /* 時計が飛んだら合わせ直す */
   if(anchor&&Math.abs((Date.now()-anchor.date)-(performance.now()-anchor.perf))>700)resync();
   const t=tsec();
   const x=fmt(Math.floor(t==null?0:t)).replace(/:/g,'');
-  digits.forEach((d,i)=>d.textContent=x[i]);
+  SG.set(x);
   const ts=t==null?-1:Math.floor(t);
   if(ts!==lastBlink){lastBlink=ts;if(ts>=0&&T.running)blink()}
   drawList(t);
