@@ -11,7 +11,7 @@ body{margin:0;font-family:sans-serif;background:#080d16;color:#e2e8f0;display:fl
 .container{text-align:center}
 /* 時間の枠。中の比率は cm.html と同じ。font-size で枠全体の大きさが決まる(横幅は前の枠と同じ846px) */
 #display{display:flex;align-items:center;justify-content:center;font-size:167.5px;border:4px solid #fff;border-radius:.114em;padding:.3em .42em;background:#000;margin-bottom:20px}
-#display svg{display:block;height:.752em;width:auto;overflow:visible}
+#display svg{display:block;height:.7485em;width:auto;overflow:visible}
 button{padding:15px;font-size:18px;border:none;border-radius:8px;cursor:pointer;background:#334155;color:#fff}
 button:active{transform:scale(.95)}
 #status{font-size:14px;font-weight:bold;padding:5px 10px;border-radius:5px;display:inline-block;margin-top:10px}
@@ -146,7 +146,7 @@ const hms=s=>{s=s.padStart(6,'0');return s.slice(0,2)*3600+s.slice(2,4)*60+s.sli
 const SEG={
   h:100,       /* 数字の縦の長さ(横幅は56のまま) */
   T:10,       /* 線の太さ */
-  gap:32,     /* 数字の間(2桁の中) */
+  gap:33,     /* 数字の間(2桁の中) */
   pg:94,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
   mu:40,      /* むら(%)。線ごとの明るさの差 */
@@ -154,7 +154,7 @@ const SEG={
   dGlow:1.8,  /* 数字のにじみ */
   cr:8.5,     /* コロンの大きさ */
   cs:54,      /* コロンの縦の間 */
-  cy:-1,      /* コロンの上下の位置(マイナスで上へ) */
+  cy:1,       /* コロンの上下の位置(マイナスで上へ) */
   cCol:'#bc0a1e', /* コロンの色 */
   cGlow:6.75, /* コロンのにじみ(広がり) */
   cGlowK:1.3, /* コロンのにじみ(濃さ) */
