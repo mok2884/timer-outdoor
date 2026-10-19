@@ -156,7 +156,8 @@ const SEG={
   cs:54,      /* コロンの縦の間 */
   cy:-3,      /* コロンの上下の位置(マイナスで上へ) */
   cCol:'#bc0a1e', /* コロンの色 */
-  cGlow:8,    /* コロンのにじみ */
+  cGlow:7.25, /* コロンのにじみ(広がり) */
+  cGlowK:1.5, /* コロンのにじみ(濃さ) */
   cOff:.2     /* コロンが消えているときの濃さ */
 };
 function seg7(box){
@@ -174,7 +175,7 @@ function seg7(box){
   const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset=".5" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
   svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
     '<filter id="sgG" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="'+SEG.dGlow+'" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
-    '<filter id="sgC" x="-400%" y="-100%" width="900%" height="300%"><feGaussianBlur stdDeviation="'+SEG.cGlow+'" result="b"/><feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="c"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+    '<filter id="sgC" x="-400%" y="-100%" width="900%" height="300%"><feGaussianBlur stdDeviation="'+SEG.cGlow+'" result="a"/><feComponentTransfer in="a" result="b"><feFuncA type="linear" slope="'+SEG.cGlowK+'"/></feComponentTransfer><feGaussianBlur in="SourceGraphic" stdDeviation="2.25" result="c"/><feMerge><feMergeNode in="b"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
   const digs=xs.map(x0=>{
     const g=document.createElementNS(NS,'g');
