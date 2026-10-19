@@ -17,7 +17,7 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 
 /* タイマー枠(cm.html と同じ形) */
 #display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;border:3px solid #fff;border-radius:.114em;padding:.3em .42em;background:#000;width:max-content}
-#display svg{display:block;height:.71em;width:auto;overflow:visible}
+#display svg{display:block;height:.745em;width:auto;overflow:visible}
 
 /* CUE用の空き(今は何も出さない) */
 #cueSlot{height:26px}
@@ -76,13 +76,13 @@ const app=document.getElementById('app'),disp=document.getElementById('display')
 /* ===== 7セグの数字(自作。外部フォントは使わない) =====
    見た目の調整は、この SEG の数字を変えるだけでできる */
 const SEG={
-  h:96,       /* 数字の縦の長さ(横幅は56のまま) */
+  h:100,       /* 数字の縦の長さ(横幅は56のまま) */
   T:10,       /* 線の太さ */
-  gap:35,     /* 数字の間(2桁の中) */
+  gap:32,     /* 数字の間(2桁の中) */
   pg:97,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
-  mu:30,      /* むら(%)。線ごとの明るさの差 */
-  dEdge:'#ee3418',dMid:'#ff5232', /* 数字の色(線の端/真ん中) */
+  mu:40,      /* むら(%)。線ごとの明るさの差 */
+  dEdge:'#f0400f',dMid:'#ff5e2a', /* 数字の色(線の端/真ん中) */
   dGlow:1.8,  /* 数字のにじみ */
   cr:8.5,     /* コロンの大きさ */
   cs:48,      /* コロンの縦の間 */
