@@ -17,7 +17,7 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 
 /* タイマー枠(cm.html と同じ形) */
 #display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;border:3px solid #fff;border-radius:.114em;padding:.3em .42em;background:#000;width:max-content}
-#display svg{display:block;height:.745em;width:auto;overflow:visible}
+#display svg{display:block;height:.7485em;width:auto;overflow:visible}
 
 /* CUE用の空き(今は何も出さない) */
 #cueSlot{height:26px}
@@ -78,16 +78,18 @@ const app=document.getElementById('app'),disp=document.getElementById('display')
 const SEG={
   h:100,       /* 数字の縦の長さ(横幅は56のまま) */
   T:10,       /* 線の太さ */
-  gap:32,     /* 数字の間(2桁の中) */
-  pg:97,      /* 2桁ごとの間(コロンのある所) */
+  gap:33,     /* 数字の間(2桁の中) */
+  pg:94,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
   mu:40,      /* むら(%)。線ごとの明るさの差 */
   dEdge:'#f0400f',dMid:'#ff5e2a', /* 数字の色(線の端/真ん中) */
   dGlow:1.8,  /* 数字のにじみ */
-  cr:8.5,     /* コロンの大きさ */
-  cs:48,      /* コロンの縦の間 */
-  cCol:'#d20c28', /* コロンの色 */
-  cGlow:4.5,  /* コロンのにじみ */
+  cr:9,       /* コロンの大きさ */
+  cs:54,      /* コロンの縦の間 */
+  cy:3,       /* コロンの上下の位置(マイナスで上へ) */
+  cCol:'#c0082e', /* コロンの色 */
+  cGlow:6.25, /* コロンのにじみ(広がり) */
+  cGlowK:1.15, /* コロンのにじみ(濃さ) */
   cOff:.2     /* コロンが消えているときの濃さ */
 };
 function seg7(box){
@@ -105,7 +107,7 @@ function seg7(box){
   const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset=".5" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
   svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
     '<filter id="sgG" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="'+SEG.dGlow+'" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
-    '<filter id="sgC" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="'+SEG.cGlow+'" result="b"/><feGaussianBlur in="SourceGraphic" stdDeviation="2" result="c"/><feMerge><feMergeNode in="b"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+    '<filter id="sgC" x="-400%" y="-100%" width="900%" height="300%"><feGaussianBlur stdDeviation="'+SEG.cGlow+'" result="a"/><feComponentTransfer in="a" result="b"><feFuncA type="linear" slope="'+SEG.cGlowK+'"/></feComponentTransfer><feGaussianBlur in="SourceGraphic" stdDeviation="2.25" result="c"/><feMerge><feMergeNode in="b"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
   const digs=xs.map(x0=>{
     const g=document.createElementNS(NS,'g');
@@ -116,7 +118,7 @@ function seg7(box){
   });
   const cols=cx.map(c0=>{
     const g=document.createElementNS(NS,'g');g.setAttribute('filter','url(#sgC)');
-    [M-SEG.cs/2,M+SEG.cs/2].forEach(y=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
+    [M+SEG.cy-SEG.cs/2,M+SEG.cy+SEG.cs/2].forEach(y=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
     svg.appendChild(g);return g;
   });
   box.textContent='';box.appendChild(svg);
