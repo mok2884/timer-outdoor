@@ -154,8 +154,9 @@ const SEG={
   dGlow:1.8,  /* 数字のにじみ */
   cr:9.5,     /* コロンの大きさ */
   cs:48,      /* コロンの縦の間 */
+  cy:-3,      /* コロンの上下の位置(マイナスで上へ) */
   cCol:'#bc0a1e', /* コロンの色 */
-  cGlow:5.5,  /* コロンのにじみ */
+  cGlow:6.5,  /* コロンのにじみ */
   cOff:.2     /* コロンが消えているときの濃さ */
 };
 function seg7(box){
@@ -184,7 +185,7 @@ function seg7(box){
   });
   const cols=cx.map(c0=>{
     const g=document.createElementNS(NS,'g');g.setAttribute('filter','url(#sgC)');
-    [M-SEG.cs/2,M+SEG.cs/2].forEach(y=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
+    [M+SEG.cy-SEG.cs/2,M+SEG.cy+SEG.cs/2].forEach(y=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
     svg.appendChild(g);return g;
   });
   box.textContent='';box.appendChild(svg);
