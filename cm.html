@@ -193,6 +193,7 @@ const fD=s=>{if(s==null)return '--';s=Math.max(0,Math.round(s));return s<60?s+'"
 const SEG={
   h:100,       /* 数字の縦の長さ(横幅は56のまま) */
   T:10,       /* 線の太さ */
+  cut:2.5,    /* 縦線の外側の角を落とす量 */
   gap:33,     /* 数字の間(2桁の中) */
   pg:94,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
@@ -209,10 +210,11 @@ const SEG={
 };
 function seg7(box){
   const NS='http://www.w3.org/2000/svg',W=56,H=SEG.h,G=1.8,M=H/2,T=SEG.T;
-  const S={a:[[G,0],[W-G,0],[W-T-G,T],[T+G,T]],d:[[G,H],[W-G,H],[W-T-G,H-T],[T+G,H-T]],
-    g:[[G,M],[T+G,M-T/2],[W-T-G,M-T/2],[W-G,M],[W-T-G,M+T/2],[T+G,M+T/2]],
-    f:[[0,G],[T,T+G],[T,M-T/2-G],[0,M-G]],e:[[0,H-G],[T,H-T-G],[T,M+T/2+G],[0,M+G]],
-    b:[[W,G],[W-T,T+G],[W-T,M-T/2-G],[W,M-G]],c:[[W,H-G],[W-T,H-T-G],[W-T,M+T/2+G],[W,M+G]]};
+  /* 縦線は外側の角を斜めに落とし、横線は台形。縦線と横線は1本の直線の切れ目で合わさる */
+  const P=SEG.cut,D=G*Math.hypot(T-P,T)/T,fx=q=>q.map(([x,y])=>[W-x,y]),fy=q=>q.map(([x,y])=>[x,H-y]);
+  const F=[[0,P],[P,0],[T,T],[T,M-T/2-G],[0,M-G]],A=[[P+D,0],[W-P-D,0],[W-T-D,T],[T+D,T]];
+  const S={a:A,d:fy(A),f:F,b:fx(F),e:fy(F),c:fx(fy(F)),
+    g:[[G,M],[T+G,M-T/2],[W-T-G,M-T/2],[W-G,M],[W-T-G,M+T/2],[T+G,M+T/2]]};
   const MAP={0:'abcdef',1:'bc',2:'abged',3:'abgcd',4:'fgbc',5:'afgcd',6:'afgedc',7:'abc',8:'abcdefg',9:'abcdfg'};
   const xs=[],cx=[];let x=0;
   for(let i=0;i<3;i++){xs.push(x,x+W+SEG.gap);x+=W*2+SEG.gap;if(i<2){cx.push(x+SEG.pg/2);x+=SEG.pg}}
