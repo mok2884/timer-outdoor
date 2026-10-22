@@ -17,7 +17,7 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 
 /* タイマー枠(cm.html と同じ形) */
 #display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;border:3px solid #fff;border-radius:.114em;padding:.3em .42em;background:#000;width:max-content}
-#display svg{display:block;height:.745em;width:auto;overflow:visible}
+#display svg{display:block;height:.7485em;width:auto;overflow:visible}
 
 /* CUE用の空き(今は何も出さない) */
 #cueSlot{height:26px}
@@ -79,15 +79,16 @@ const SEG={
   h:100,       /* 数字の縦の長さ(横幅は56のまま) */
   T:10,       /* 線の太さ */
   cut:2.5,    /* 縦線の外側の角を落とす量 */
-  gap:32,     /* 数字の間(2桁の中) */
-  pg:97,      /* 2桁ごとの間(コロンのある所) */
+  gap:33,     /* 数字の間(2桁の中) */
+  pg:94,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
   mu:0,       /* むら(%)。線ごとの明るさの差(0で全部同じ明るさ) */
   dEdge:'#f0400f',dMid:'#ff5e2a', /* 数字の色(線の端/真ん中) */
-  cr:8.5,     /* コロンの大きさ */
-  cs:48,      /* コロンの縦の間 */
-  cCol:'#d20c28', /* コロンの色 */
-  cGlow:4.5,  /* コロンのにじみの広がり(ぼかしは使わない) */
+  cr:9,       /* コロンの大きさ */
+  cs:54,      /* コロンの縦の間 */
+  cy:3,       /* コロンの上下の位置(マイナスで上へ) */
+  cCol:'#c0082e', /* コロンの色 */
+  cGlow:6.25,  /* コロンのにじみの広がり(ぼかしは使わない) */
   cHalo:.55,  /* コロンのにじみの濃さ(0でにじみなし) */
   cOff:.2     /* コロンが消えているときの濃さ */
 };
@@ -117,7 +118,7 @@ function seg7(box){
   });
   const cols=cx.map(c0=>{
     const g=document.createElementNS(NS,'g');
-    [M-SEG.cs/2,M+SEG.cs/2].forEach(y=>{
+    [M+SEG.cy-SEG.cs/2,M+SEG.cy+SEG.cs/2].forEach(y=>{
       const h=document.createElementNS(NS,'circle');h.setAttribute('cx',c0+off/2);h.setAttribute('cy',y);h.setAttribute('r',SEG.cr+SEG.cGlow*2.4);h.setAttribute('fill','url(#sgR)');g.appendChild(h);
       const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
     svg.appendChild(g);return g;
