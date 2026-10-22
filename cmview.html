@@ -47,6 +47,10 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 </style>
 </head>
 <body>
+<!-- 最初に一度押してもらい、画面スリープ防止を確実にかける(タイマーのCUE子機と同じ) -->
+<div id="tap" style="position:fixed;inset:0;background:rgba(15,23,42,.8);display:flex;justify-content:center;align-items:center;z-index:9999;cursor:pointer"><div style="color:#fff;font-size:30px;font-weight:bold;text-align:center">TAP HERE</div></div>
+<!-- 画面スリープ防止の補助: 見えない小さな動画を流し続ける(タイマーと同じもの) -->
+<video id="keep" autoplay muted loop playsinline width="1" height="1" style="position:fixed;left:0;bottom:0;opacity:0;pointer-events:none"><source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4"></video>
 <button id="pinBtn" aria-label="PIN" title="手前に小さく出す"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button>
 <div id="app">
   <span id="unl">UNLINK</span>
@@ -238,11 +242,21 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(l=>l.addEventListene
 if(document.fonts){document.fonts.ready.then(fit);document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',fit)}
 
 /* ===== 画面スリープ防止 ===== */
-let wl=null;
-async function awake(){try{if('wakeLock' in navigator&&!wl&&document.visibilityState==='visible'){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+let wl=null,waking=false;
+async function awake(){
+  if(waking||wl||!('wakeLock' in navigator)||document.visibilityState!=='visible')return;
+  waking=true;
+  try{wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}catch(e){}
+  waking=false;
+}
+const keep=document.getElementById('keep');
+const keepPlay=()=>{try{const r=keep.play();if(r&&r.catch)r.catch(()=>{})}catch(e){}};
+document.getElementById('tap').onclick=()=>{document.getElementById('tap').style.display='none';awake();keepPlay()};
 awake();
-document.addEventListener('pointerdown',()=>{if(!wl)awake()});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();resync(true)}});
+document.addEventListener('pointerdown',()=>{awake();keepPlay()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){awake();keepPlay();resync(true)}});
+/* 外れていたら、数秒ごとにかけ直す(iPhone は途中で外すことがあるため) */
+setInterval(()=>{awake();if(keep.paused)keepPlay()},5000);
 
 /* ===== PIN: 手前に出る小さな窓(パソコンの Chrome / Edge のみ) ===== */
 let pipWin=null,pipTimer=null,pipSync=null,pwl=null;
