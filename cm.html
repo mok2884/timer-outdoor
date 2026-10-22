@@ -29,7 +29,7 @@ header{display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:
 #ptc{display:flex;flex-direction:column;gap:5px;width:56px}
 #ptc #pts,#ptc #conn,#ptc #own{color:#94a3b8;border-color:#475569}
 #ptc .chip{width:56px;font-size:8px;letter-spacing:.02em;line-height:1.3;text-align:center;padding:2px 0;border-radius:4px;overflow:hidden}
-#display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;border:3px solid #fff;border-radius:.114em;padding:.3em .42em;background:#000}
+#display{display:flex;align-items:center;justify-content:center;font-size:4.4rem;border:3px solid #d9d9d9;border-radius:.114em;padding:.3em .42em;background:#000;box-shadow:0 0 .0732em rgba(217,217,217,.8)}
 #display svg{display:block;height:.7485em;width:auto;overflow:visible}
 #modeSw{margin-left:auto;display:flex;gap:0}
 #modeSw button{border-radius:0;background:#111827;color:#64748b;font-weight:600;font-size:13px;padding:5px 16px}
@@ -204,13 +204,16 @@ const SEG={
   pg:94,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
   mu:0,       /* むら(%)。線ごとの明るさの差(0で全部同じ明るさ) */
-  dEdge:'#f0400f',dMid:'#ff5e2a', /* 数字の色(線の端/真ん中) */
-  cr:9,       /* コロンの大きさ */
+  dEdge:'#f00f0f',dMid:'#ff5b4d', /* 数字の色(線の端/真ん中) */
+  dW:20,      /* 光る幅(%)。真ん中の明るい部分の広さ */
+  cr:10.5,       /* コロンの大きさ */
   cs:54,      /* コロンの縦の間 */
   cy:3,       /* コロンの上下の位置(マイナスで上へ) */
-  cCol:'#c0082e', /* コロンの色 */
+  cCol:'#b1072a', /* コロンの色 */
+  cHi:'#d14452',  /* コロンの玉の真ん中 */
+  cLo:'#78051c',  /* コロンの玉のふち */
   cGlow:6.25,  /* コロンのにじみの広がり(ぼかしは使わない) */
-  cHalo:.55,  /* コロンのにじみの濃さ(0でにじみなし) */
+  cHalo:.5,  /* コロンのにじみの濃さ(0でにじみなし) */
   cOff:.2     /* コロンが消えているときの濃さ */
 };
 function seg7(box){
@@ -226,8 +229,10 @@ function seg7(box){
   const off=Math.tan(SEG.sk*Math.PI/180)*H;
   const svg=document.createElementNS(NS,'svg');
   svg.setAttribute('viewBox','-6 -8 '+(x+off+12)+' '+(H+16));svg.setAttribute('aria-hidden','true');
-  const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset=".5" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
+  const p1=(0.5-SEG.dW/200).toFixed(3),p2=(0.5+SEG.dW/200).toFixed(3);
+  const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset="'+p1+'" stop-color="'+SEG.dMid+'"/><stop offset="'+p2+'" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
   svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
+    '<radialGradient id="sgD" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="'+SEG.cHi+'"/><stop offset=".55" stop-color="'+SEG.cCol+'"/><stop offset="1" stop-color="'+SEG.cLo+'"/></radialGradient>'+
     '<radialGradient id="sgR"><stop offset="0" stop-color="'+SEG.cCol+'" stop-opacity="'+SEG.cHalo+'"/><stop offset=".45" stop-color="'+SEG.cCol+'" stop-opacity="'+(SEG.cHalo*.45)+'"/><stop offset="1" stop-color="'+SEG.cCol+'" stop-opacity="0"/></radialGradient></defs>';
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
   const digs=xs.map(x0=>{
@@ -241,7 +246,7 @@ function seg7(box){
     const g=document.createElementNS(NS,'g');
     [M+SEG.cy-SEG.cs/2,M+SEG.cy+SEG.cs/2].forEach(y=>{
       const h=document.createElementNS(NS,'circle');h.setAttribute('cx',c0+off/2);h.setAttribute('cy',y);h.setAttribute('r',SEG.cr+SEG.cGlow*2.4);h.setAttribute('fill','url(#sgR)');g.appendChild(h);
-      const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
+      const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill','url(#sgD)');g.appendChild(c)});
     svg.appendChild(g);return g;
   });
   box.textContent='';box.appendChild(svg);
