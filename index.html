@@ -153,7 +153,8 @@ const SEG={
   pg:94,      /* 2桁ごとの間(コロンのある所) */
   sk:6,       /* 傾き(度) */
   mu:0,       /* むら(%)。線ごとの明るさの差(0で全部同じ明るさ) */
-  dEdge:'#f00f0f',dMid:'#ff6656', /* 数字の色(線の端/真ん中) */
+  dCol:'#f00f0f', /* 数字の色(1色だけ) */
+  dGlow:25,   /* 光の強さ(%)。線の真ん中をどれだけ白っぽく光らせるか(0で光なし) */
   dW:40,      /* 光る幅(%)。真ん中の明るい部分の広さ */
   cr:10.5,       /* コロンの大きさ */
   cs:54,      /* コロンの縦の間 */
@@ -178,8 +179,11 @@ function seg7(box){
   const off=Math.tan(SEG.sk*Math.PI/180)*H;
   const svg=document.createElementNS(NS,'svg');
   svg.setAttribute('viewBox','-6 -8 '+(x+off+12)+' '+(H+16));svg.setAttribute('aria-hidden','true');
+  /* 線の真ん中の色 = 数字の色に、光の強さの分だけ白を混ぜた色 */
+  const mix=(c,t)=>'#'+[1,3,5].map(i=>Math.round(parseInt(c.substr(i,2),16)+(255-parseInt(c.substr(i,2),16))*t).toString(16).padStart(2,'0')).join('');
+  const dEdge=SEG.dCol,dMid=mix(SEG.dCol,SEG.dGlow/100);
   const p1=(0.5-SEG.dW/200).toFixed(3),p2=(0.5+SEG.dW/200).toFixed(3);
-  const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset="'+p1+'" stop-color="'+SEG.dMid+'"/><stop offset="'+p2+'" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
+  const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+dEdge+'"/><stop offset="'+p1+'" stop-color="'+dMid+'"/><stop offset="'+p2+'" stop-color="'+dMid+'"/><stop offset="1" stop-color="'+dEdge+'"/></linearGradient>';
   svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
     '<radialGradient id="sgD" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="'+SEG.cHi+'"/><stop offset=".55" stop-color="'+SEG.cCol+'"/><stop offset="1" stop-color="'+SEG.cLo+'"/></radialGradient>'+
     '<radialGradient id="sgR"><stop offset="0" stop-color="'+SEG.cCol+'" stop-opacity="'+SEG.cHalo+'"/><stop offset=".45" stop-color="'+SEG.cCol+'" stop-opacity="'+(SEG.cHalo*.45)+'"/><stop offset="1" stop-color="'+SEG.cCol+'" stop-opacity="0"/></radialGradient></defs>';
