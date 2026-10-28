@@ -51,7 +51,11 @@ td.no{color:#64748b;width:30px;text-align:right;padding:0 6px;background:#111827
 td input,td select{border:none;border-radius:0;background:transparent;padding:2px 6px;font-size:14px;height:23px;margin:0;vertical-align:middle}
 td input:focus,td select:focus{outline:1px solid #38bdf8;outline-offset:-1px;background:#0b1220}
 input.bad{background:#4a1414}
-.k{width:62px}.at{width:84px}.nm{width:280px}.du{width:58px}
+.at{width:76px}.nm{width:190px}.du{width:52px}
+/* 入力のボタン(タップで入れる) */
+td.kc,td.nmc,td.duc{padding:0 2px}
+.ib{padding:0 7px;height:26px;min-width:30px;font-size:13px;background:#1e293b;border:1px solid #334155;border-radius:4px;margin:1px;color:#e2e8f0;vertical-align:middle}
+.ib.on{background:#e2e8f0;color:#0f172a;border-color:#e2e8f0;font-weight:700}
 .dv{display:inline-block;width:62px;font-size:12px;color:#94a3b8;padding-left:4px;vertical-align:middle}.dv.bad{color:#ef4444}
 tr.st-done td:not(.ops):not(.last){opacity:.4}
 tr.st-oa .no{color:#ff3b3b;font-weight:900}
@@ -121,7 +125,7 @@ footer .chip,footer .chip.ok,footer .chip.wait{font-size:11px;padding:1px 7px;co
 <main>
   <section id="editView">
     <table>
-      <thead><tr><th></th><th>発行</th><th>時間(確定)</th><th>CMの名前</th><th>秒数</th><th></th><th></th></tr></thead>
+      <thead><tr><th></th><th>発行</th><th>時間(確定)</th><th>CMの名前</th><th>尺</th><th></th><th></th></tr></thead>
       <tbody id="tb"></tbody>
     </table>
     <div class="hint">確定は、秒数を空にできます。その場合は、時間になると行が消えるだけです。確定の行より下にあるQは、その確定が消えるまで始まりません。</div>
@@ -473,9 +477,9 @@ function drawEdit(){
   const tb=$('tb');tb.textContent='';
   rows.forEach((r,i)=>{
     const tr=document.createElement('tr');tr.dataset.id=r.id;tr.className='st-'+r.st;
-    tr.innerHTML='<td class="no"></td><td><select class="k"><option value="Q">Q</option><option value="F">確定</option></select></td><td><input class="at" placeholder="hh:mm:ss" autocomplete="off"></td><td><input class="nm" placeholder="CMの名前" autocomplete="off"></td><td><input class="du" inputmode="numeric" placeholder="例 120" autocomplete="off"><span class="dv"></span></td><td class="ops"><button class="up">↑</button><button class="dn">↓</button><button class="del">✕</button></td><td class="last"><button class="stb"></button></td>';
+    tr.innerHTML='<td class="no"></td><td class="kc"><button class="ib kq">Q</button><button class="ib kf">確定</button></td><td><input class="at" placeholder="hh:mm:ss" autocomplete="off"></td><td class="nmc"><button class="ib nc">クリア</button><input class="nm" placeholder="CMの名前" autocomplete="off"><button class="ib np">PT</button><button class="ib nv">VIVA</button><button class="ib ni">+</button><button class="ib nd">−</button><button class="ib nj">時報</button></td><td class="duc"><input class="du" inputmode="numeric" placeholder="例 120" autocomplete="off"><span class="dv"></span><button class="ib d20">20</button><button class="ib dc">クリア</button></td><td class="ops"><button class="up">↑</button><button class="dn">↓</button><button class="del">✕</button></td><td class="last"><button class="stb"></button></td>';
     tr.querySelector('.no').textContent=i+1;
-    tr.querySelector('.k').value=r.k;
+    tr.querySelector('.kq').classList.toggle('on',r.k==='Q');tr.querySelector('.kf').classList.toggle('on',r.k==='F');
     const at=tr.querySelector('.at');at.value=r.tx||'';at.disabled=r.k!=='F';
     if(r.k==='F'&&r.at==null)at.classList.add('bad');
     tr.querySelector('.nm').value=r.name||'';
@@ -504,14 +508,28 @@ $('tb').addEventListener('focusout',e=>{
   if(e.target.classList.contains('du')&&r.dur!=null&&zen(r.dtx)!==''){r.dtx=fD(r.dur);e.target.value=r.dtx;save()}
   else if(e.target.classList.contains('at')&&r.at!=null){r.tx=fmt(Math.round(r.at));e.target.value=r.tx;save()}
 });
-$('tb').addEventListener('change',e=>{
-  const r=rowOf(e.target);if(!r)return;
-  if(e.target.classList.contains('k')){r.k=e.target.value;r.dur=calcDur(r);drawEdit();save()}
-});
+/* 名前の最後の数字を、1つ増やす・減らす(PT → PT 1 → PT 2 …、PT 1 で減らすと PT) */
+function nameStep(n,d){
+  const m=String(n||'').match(/^(.*?)(\s*)(\d+)$/);
+  if(!m)return d>0?(String(n||'').trim()===''?'1':String(n).replace(/\s+$/,'')+' 1'):n;
+  const v=+m[3]+d;
+  return v>=1?m[1]+(m[2]||'')+v:m[1].replace(/\s+$/,'');
+}
+const setDur=(r,sec)=>{r.dtx=sec==null?'':fD(sec);r.dur=calcDur(r)};
 $('tb').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   const r=rowOf(b);if(!r)return;const i=rows.indexOf(r);
-  if(b.classList.contains('up')&&i>0){rows.splice(i,1);rows.splice(i-1,0,r)}
+  const c=b.classList;
+  if(c.contains('kq')||c.contains('kf')){r.k=c.contains('kf')?'F':'Q';r.dur=calcDur(r)}
+  else if(c.contains('nc'))r.name='';
+  else if(c.contains('np'))r.name='PT';
+  else if(c.contains('nv'))r.name='VIVA';
+  else if(c.contains('ni'))r.name=nameStep(r.name,1);
+  else if(c.contains('nd'))r.name=nameStep(r.name,-1);
+  else if(c.contains('nj')){r.name='時報';setDur(r,3)}
+  else if(c.contains('d20')){const d=r.dur;setDur(r,d!=null&&zen(r.dtx)!==''&&d>=21&&(d-1)%20===0?d+20:21)}
+  else if(c.contains('dc'))setDur(r,null);
+  else if(b.classList.contains('up')&&i>0){rows.splice(i,1);rows.splice(i-1,0,r)}
   else if(b.classList.contains('dn')&&i<rows.length-1){rows.splice(i,1);rows.splice(i+1,0,r)}
   else if(b.classList.contains('del')){rows.splice(i,1);stack=stack.filter(x=>x!==r.id)}
   else if(b.classList.contains('stb')){
