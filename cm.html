@@ -511,7 +511,7 @@ $('tb').addEventListener('focusout',e=>{
 /* 名前の最後の数字を、1つ増やす・減らす(PT → PT 1 → PT 2 …、PT 1 で減らすと PT) */
 function nameStep(n,d){
   const m=String(n||'').match(/^(.*?)(\s*)(\d+)$/);
-  if(!m)return d>0?(String(n||'').trim()===''?'1':String(n).replace(/\s+$/,'')+' 1'):n;
+  if(!m)return d>0?(String(n||'').trim()===''?'1':String(n).replace(/\s+$/,'')+'　1'):n;
   const v=+m[3]+d;
   return v>=1?m[1]+(m[2]||'')+v:m[1].replace(/\s+$/,'');
 }
