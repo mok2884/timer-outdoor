@@ -32,11 +32,9 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 .row .c4{text-align:right;min-width:56px;overflow:visible}
 .row.late{opacity:.35}
 .row.oa{background:rgba(255,255,255,.17);color:#fff;height:56px}
-/* 終わったイベント(直近2行)は暗く残す */
-.row.done{opacity:.35}
-/* 確定の OA中: 目印も大きな数字も出さない。グレーで、今どこにいるかだけわかるように */
-.row.foa{color:#8a95a5;background:rgba(255,255,255,.06)}
-.row.foa .c2{color:#8a95a5}
+/* 確定の OA中: Q の OA中と同じ行の形。ただし OA の目印は出さず、残りの数字も大きくしない */
+.row.foa{background:rgba(255,255,255,.17);color:#fff;height:56px}
+.row.foa>div{line-height:56px}
 .row.oa>div{line-height:56px}
 .row.oa .c4{font-size:42px;font-weight:700}
 .badge{display:inline-block;vertical-align:middle;background:#dc2626;color:#fff;font-size:12px;font-weight:700;line-height:18px;padding:0 3px;border-radius:4px;letter-spacing:.03em}
@@ -228,8 +226,8 @@ function draw(){
   drawList(t);
 }
 function drawList(t){
-  /* 終わった行の直近2つ + まだ終わっていない行(最大10) */
-  const vis=rowsAll?[...rowsAll.filter(r=>r.st==='done').slice(-2),...rowsAll.filter(r=>r.st!=='done').slice(0,10)]:rows.slice(0,10);
+  /* まだ終わっていない行(最大10) */
+  const vis=rowsAll?rowsAll.filter(r=>r.st!=='done').slice(0,10):rows.slice(0,10);
   const sig=vis.map(r=>r.k+r.st+(r.name||'')+r.dur+r.at+(r.st==='oa'?Math.ceil(Math.max(0,remainOf(r))):'')+(late(r,t)?'L':'')).join()+'|'+got;
   if(sig===lastSig)return;
   lastSig=sig;
