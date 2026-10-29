@@ -75,10 +75,9 @@ textarea{width:100%;height:90px;margin:6px 0;font-family:monospace;font-size:13p
 
 /* 進行中画面 */
 #runView{width:var(--runw,420px);margin-left:18px}
-/* 操作権: 他の端末で進行中のときは、下に小さく出す。画面は見えるまま(見るだけ) */
-#ctl{position:fixed;left:0;right:18px;bottom:52px;display:none;justify-content:flex-end;z-index:9998;text-align:center;color:#fff;font-weight:bold;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#ctl>div{pointer-events:auto;background:rgba(15,23,42,.95);border:1px solid #475569;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:14px}
-#ctlBtn{position:relative;overflow:hidden;border:3px solid #fff;border-radius:12px;padding:10px 22px;font-size:20px;line-height:1;cursor:pointer}
+/* 操作権: 他の端末で進行中のときは、画面全体をおおう(タイマーの親機と同じ形) */
+#ctl{position:fixed;inset:0;background:rgba(15,23,42,.8);display:none;justify-content:center;align-items:center;z-index:9998;text-align:center;color:#fff;font-weight:bold;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#ctlBtn{position:relative;overflow:hidden;border:4px solid #fff;border-radius:16px;padding:22px 40px;font-size:34px;line-height:1;cursor:pointer}
 /* 見るだけのときは、一覧や進行の操作を押せなくする */
 body.ro #tb,body.ro .bar,body.ro #paste,body.ro #pasteAdd,body.ro #ctrls{pointer-events:none;opacity:.55}
 #ctlFill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.4)}
@@ -120,7 +119,7 @@ footer .chip,footer .chip.ok,footer .chip.wait{font-size:11px;padding:1px 7px;co
 </style>
 </head>
 <body class="edit">
-<div id="ctl"><div><div id="ctlText" style="font-size:16px">他の端末で進行中(見るだけ)</div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
+<div id="ctl"><div><div id="ctlText" style="font-size:28px;margin-bottom:24px">他の端末で進行中</div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
 <header>
   <div id="pt"><div id="ptc"><span id="pts" class="chip">--</span><span id="conn" class="chip wait">CONNECTING</span><span id="det" class="chip off">DETECT OFF</span><span id="own" class="chip">操作:確認中</span></div><div id="display"></div></div>
   <div id="modeSw"><button id="mEdit" class="on">入力</button><button id="mRun">進行中</button></div>
