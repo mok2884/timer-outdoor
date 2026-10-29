@@ -55,6 +55,17 @@ button:active{transform:scale(.95)}
 .rp{display:flex;flex-direction:column;gap:10px}
 .rz{height:80px;background:#556577;font-weight:900}
 .go{height:225px;background:#f8f8f4;color:#000;font-weight:900}
+/* TIMER / REALTIME の切り替え(親機だけ)。選ばれていない方を押し続けると、バーがのびて切り替わる */
+#modeRow{display:none;gap:0;margin:0 0 10px}
+.m #modeRow{display:flex}
+#modeRow button{position:relative;overflow:hidden;flex:1;padding:9px 0;font-size:16px;font-weight:900;letter-spacing:.06em;border-radius:0;background:#111827;color:#64748b;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#modeRow button:first-child{border-radius:8px 0 0 8px}
+#modeRow button:last-child{border-radius:0 8px 8px 0}
+#modeRow button.on{background:#cbd5e1;color:#0b1220}
+#modeRow button:active{transform:none}
+#modeRow button:focus{outline:none}
+#modeRow .mf{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.35)}
+#modeRow span{position:relative}
 .disabled{background:#334155!important;color:#94a3b8!important;cursor:not-allowed;opacity:.6}
 #cueMasterInfo{width:94%;height:40px;margin:6px auto 0;display:flex;align-items:baseline;font-family:Roboto,sans-serif;font-weight:900;gap:40px}
 #cml{font-size:20px;font-weight:700}#cmt{font-size:26px;font-weight:700}
@@ -87,6 +98,7 @@ html{overflow:hidden}
 <div class="container">
 <div id="dg">
 <div id="topRow"><button id="pinBtn" onclick="pinToggle()" aria-label="PIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button><button class="rl" onclick="location.reload()">RELOAD</button></div>
+<div id="modeRow"><button id="mT"><div class="mf"></div><span>TIMER</span></button><button id="mR"><div class="mf"></div><span>REALTIME</span></button></div>
 <div id="display"></div>
 <div id="lblRow"><span></span><div id="slaveLabel">REAL TIME / TIMER</div><button id="qrBtn" onclick="qrShow(1)">QR</button></div>
 <div id="cueInfo"><div id="cueLabel">--</div><div id="cueTimeRow"><span id="cueTargetTime">--:--</span><span id="cueRemain">--:--</span></div></div>
@@ -265,6 +277,7 @@ function tick(){
   const x=fmt(t).replace(/:/g,'');
   SG.set(x);
   if(t!==lastBlink){lastBlink=t;if(role!=='master'||T.running)blink()}
+  if(can()&&isRT()&&t>=29*3600){wr({running:true,base:T.base+DAY,value:0});return}
   if(can()&&CUE&&t>=CUE.target){CUE=null;set(R('cue'),null).catch(bad)}
   drawCue(t);
 }
@@ -273,7 +286,34 @@ setInterval(tick,100);
 /* 親機:操作 */
 let buf='',saved='',editing=false,locked=false;
 const wr=o=>set(R('timer'),o).catch(bad);
-function ui(){if(role!=='master')return;q('.rz').classList.toggle('disabled',T.running);q('.set').classList.toggle('disabled',T.running)}
+function ui(){if(role!=='master')return;const rt=isRT();q('.rz').classList.toggle('disabled',T.running);q('.set').classList.toggle('disabled',T.running);q('.go').classList.toggle('disabled',rt);$('mT').classList.toggle('on',!rt);$('mR').classList.toggle('on',rt)}
+/* ===== REALTIME =====
+   「放送の1日の0時にスタートしたタイマー」として動かす。タイマーの値が、そのまま時刻(5:00:00〜28:59:59)になる。
+   子機などは、ふつうのタイマーと同じように表示するだけでよい。時刻はサーバーの時計が基準 */
+const DAY=86400000,JST=9*3600000;
+const isRT=()=>T.running&&((T.base+JST)%DAY+DAY)%DAY===0;
+function rtBase(){const j=now()+JST;let d=Math.floor(j/DAY);if(j-d*DAY<5*3600000)d--;return d*DAY-JST}
+function goRT(){
+  if(!can()||isRT()||(off===null&&!anchor))return;
+  /* 切り替える直前のタイマーを覚えておく(TIMER に戻したとき、元に戻すため) */
+  try{localStorage.setItem('rtPrev',JSON.stringify(T))}catch(e){}
+  wr({running:true,base:rtBase(),value:0});
+}
+function goTimer(){
+  if(!can()||!isRT())return;
+  let p=null;try{p=JSON.parse(localStorage.getItem('rtPrev')||'null')}catch(e){}
+  try{localStorage.removeItem('rtPrev')}catch(e){}
+  /* 前の状態があれば戻す(走っていたなら、ずっと走っていたのと同じ時間になる)。なければゼロ */
+  if(p&&typeof p.base==='number'&&typeof p.value==='number')wr({running:!!p.running,base:p.running?p.base:0,value:p.running?p.value:p.value});
+  else wr({running:false,value:0,base:0});
+}
+/* 押し続けて切り替える(1秒)。選ばれている方を押しても何もしない */
+[['mT',goTimer,()=>!isRT()],['mR',goRT,()=>isRT()]].forEach(([id,fn,on])=>{
+  const b=$(id),f=b.querySelector('.mf');let h=null;
+  const rel=()=>{clearTimeout(h);f.style.transition='none';f.style.width='0'};
+  b.onpointerdown=()=>{if(on()||!can())return;f.style.transition='width 1s linear';f.style.width='100%';h=setTimeout(()=>{rel();fn()},1000)};
+  ['onpointerup','onpointerleave','onpointercancel'].forEach(e=>b[e]=rel);
+});
 function preview(){const s=buf||saved;if(!s){$('inputPreview').textContent='--:--:--';return}const d=s.padStart(6,'0');$('inputPreview').textContent=d.slice(0,2)+':'+d.slice(2,4)+':'+d.slice(4,6)}
 function press(n){if(!editing){buf='';editing=true}if(buf.length<6){buf+=n;preview()}}
 addEventListener('keydown',e=>{
@@ -289,9 +329,9 @@ addEventListener('keydown',e=>{
   else if(c==='Space')e.preventDefault()
 });
 function clearInput(){buf='';saved='';editing=false;preview()}
-function setTimer(){if(!can()||T.running||!buf)return;wr({running:false,value:hms(buf),base:0});saved=buf;editing=false;preview()}
-function resetTimer(){if(!can()||T.running)return;wr({running:false,value:0,base:0})}
-function toggleTimer(){if(!can()||locked||(off===null&&!anchor))return;
+function setTimer(){if(!can()||T.running||isRT()||!buf)return;wr({running:false,value:hms(buf),base:0});saved=buf;editing=false;preview()}
+function resetTimer(){if(!can()||T.running||isRT())return;wr({running:false,value:0,base:0})}
+function toggleTimer(){if(!can()||locked||isRT()||(off===null&&!anchor))return;
   if(T.running)wr({running:false,value:exact(),base:0});
   else wr({running:true,base:now()-T.value*1000,value:T.value})}
 function toggleLock(){locked=!locked;$('lock').textContent=locked?'🔒':'🔓';$('lock').style.background=locked?'#6B3F46':'';const g=q('.go');g.style.background=locked?'#334155':'#f8f8f4';g.style.color=locked?'#94a3b8':'#000'}
