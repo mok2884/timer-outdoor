@@ -56,15 +56,15 @@ button:active{transform:scale(.95)}
 .rz{height:80px;background:#556577;font-weight:900}
 .go{height:225px;background:#f8f8f4;color:#000;font-weight:900}
 /* TIMER / REALTIME の切り替え(親機だけ)。選ばれていない方を押し続けると、バーがのびて切り替わる */
-#modeRow{display:none;gap:0;margin:0 0 10px}
+#modeRow{display:none;gap:0;margin:0 0 16px;justify-content:flex-start}
 .m #modeRow{display:flex}
-#modeRow button{position:relative;overflow:hidden;flex:1;padding:9px 0;font-size:16px;font-weight:900;letter-spacing:.06em;border-radius:0;background:#111827;color:#64748b;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#modeRow button:first-child{border-radius:8px 0 0 8px}
-#modeRow button:last-child{border-radius:0 8px 8px 0}
-#modeRow button.on{background:#cbd5e1;color:#0b1220}
+#modeRow button{position:relative;overflow:hidden;width:76px;padding:4px 0;font-size:11px;font-weight:700;letter-spacing:.06em;border-radius:0;background:#111827;color:#475569;border:1px solid #1e293b;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#modeRow button:first-child{border-radius:5px 0 0 5px}
+#modeRow button:last-child{border-radius:0 5px 5px 0;border-left:none}
+#modeRow button.on{background:#1e293b;color:#cbd5e1}
 #modeRow button:active{transform:none}
 #modeRow button:focus{outline:none}
-#modeRow .mf{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.35)}
+#modeRow .mf{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.2)}
 #modeRow span{position:relative}
 .disabled{background:#334155!important;color:#94a3b8!important;cursor:not-allowed;opacity:.6}
 #cueMasterInfo{width:94%;height:40px;margin:6px auto 0;display:flex;align-items:baseline;font-family:Roboto,sans-serif;font-weight:900;gap:40px}
