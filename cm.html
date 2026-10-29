@@ -75,9 +75,12 @@ textarea{width:100%;height:90px;margin:6px 0;font-family:monospace;font-size:13p
 
 /* 進行中画面 */
 #runView{width:var(--runw,420px);margin-left:18px}
-/* 操作権: 他の端末で進行中のときは、画面全体をおおう(タイマーの親機と同じ形) */
-#ctl{position:fixed;inset:0;background:rgba(15,23,42,.8);display:none;justify-content:center;align-items:center;z-index:9998;text-align:center;color:#fff;font-weight:bold;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#ctlBtn{position:relative;overflow:hidden;border:4px solid #fff;border-radius:16px;padding:22px 40px;font-size:34px;line-height:1;cursor:pointer}
+/* 操作権: 他の端末で進行中のときは、下に小さく出す。画面は見えるまま(見るだけ) */
+#ctl{position:fixed;left:0;right:18px;bottom:52px;display:none;justify-content:flex-end;z-index:9998;text-align:center;color:#fff;font-weight:bold;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#ctl>div{pointer-events:auto;background:rgba(15,23,42,.95);border:1px solid #475569;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:14px}
+#ctlBtn{position:relative;overflow:hidden;border:3px solid #fff;border-radius:12px;padding:10px 22px;font-size:20px;line-height:1;cursor:pointer}
+/* 見るだけのときは、一覧や進行の操作を押せなくする */
+body.ro #tb,body.ro .bar,body.ro #paste,body.ro #pasteAdd,body.ro #ctrls{pointer-events:none;opacity:.55}
 #ctlFill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.4)}
 #ctlBtn span{position:relative}
 #list{flex:1;min-height:0;overflow:hidden;padding:12px 0;display:flex;flex-direction:column;gap:0}
@@ -117,7 +120,7 @@ footer .chip,footer .chip.ok,footer .chip.wait{font-size:11px;padding:1px 7px;co
 </style>
 </head>
 <body class="edit">
-<div id="ctl"><div><div id="ctlText" style="font-size:28px;margin-bottom:24px">他の端末で進行中</div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
+<div id="ctl"><div><div id="ctlText" style="font-size:16px">他の端末で進行中(見るだけ)</div><div id="ctlBtn"><div id="ctlFill"></div><span>長押しで引き継ぐ</span></div></div></div>
 <header>
   <div id="pt"><div id="ptc"><span id="pts" class="chip">--</span><span id="conn" class="chip wait">CONNECTING</span><span id="det" class="chip off">DETECT OFF</span><span id="own" class="chip">操作:確認中</span></div><div id="display"></div></div>
   <div id="modeSw"><button id="mEdit" class="on">入力</button><button id="mRun">進行中</button></div>
@@ -286,6 +289,7 @@ let cmOwner=null,ownReady=false;
 const isOwner=()=>ownReady&&cmOwner===did;
 function ownUi(){
   $('ctl').style.display=ownReady&&!isOwner()?'flex':'none';
+  document.body.classList.toggle('ro',!isOwner());
   $('own').textContent=!ownReady?'操作:確認中':isOwner()?'操作:自分':'操作:他';
 }
 /* 操作権を書く。書けなかったときは、理由をログに出す */
@@ -298,8 +302,8 @@ onValue(R('cmowner'),s=>{
     /* 誰も持っていなければ、最初の1回だけ自動で取る(書けなかったときに、何度も書きに行かないため) */
     if(cmOwner===null&&!autoClaimed){autoClaimed=true;ownUi();claim();return}
     ownUi();
-    if(!was&&isOwner()){log('操作権を持ちました(子機に送ります)');publish(true)}
-    else if(was&&!isOwner())log('操作権が他の端末に移りました');
+    if(!was&&isOwner()){log('操作権を持ちました(子機に送ります)');tryAdopt();publish(true)}
+    else if(was&&!isOwner()){log('操作権が他の端末に移りました');adopted=false;if(srv&&srv.s)applySrv(srv.s)}
   }catch(e){log('操作権の処理でエラー: '+e.message)}
 },e=>log('操作権を読めません: '+(e.code||e.message)));
 /* 10秒たっても操作権の情報が届かなければ、ログに出す */
@@ -338,7 +342,8 @@ const KEY='cmState1';
 let rows=[],stack=[],mode='edit';
 const S={thr:-50,hold:1.0,guard:2.0,fb:4,adv:1.0,dev:''};
 const nid=()=>'r'+Math.random().toString(36).slice(2,9);
-function save(){try{localStorage.setItem(KEY,JSON.stringify({rows:rows.map(r=>({id:r.id,k:r.k,tx:r.tx,at:r.at,name:r.name,dur:r.dur,dtx:r.dtx,st:r.st==='oa'?'wait':r.st})),stack,S,mode}))}catch(e){}publish()}
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify({rows:rows.map(r=>({id:r.id,k:r.k,tx:r.tx,at:r.at,name:r.name,dur:r.dur,dtx:r.dtx,st:r.st==='oa'?'wait':r.st})),stack,S,mode}))}catch(e){}}
+function save(){saveLocal();publish();pushState()}
 function load(){
   try{const j=JSON.parse(localStorage.getItem(KEY)||'null');
     if(j&&Array.isArray(j.rows)){rows=j.rows.map(r=>({...r,dtx:r.dtx!=null?r.dtx:fD(r.dur),st:r.st==='done'?'done':'wait'}));stack=(j.stack||[]).filter(id=>rows.some(r=>r.id===id&&r.st==='done'));Object.assign(S,j.S||{});mode=j.mode==='run'?'run':'edit';return}
@@ -378,6 +383,44 @@ function publish(force){
   },300);
 }
 
+/* ===== 一覧と進行の状態を、全部の端末で共有する(rooms/<room>/cmdata) =====
+   書くのは、操作権を持つ端末だけ。ほかの端末は、届いた内容をそのまま表示する(見るだけ)。
+   操作権を取った端末は、サーバーにある最新の内容から続ける。
+   端末の中の保存(localStorage)も残して、つながらないときの予備にする */
+let srv=null,srvReady=false,adopted=false,pushT=null,lastPush='',pushErr=false;
+const pack=()=>JSON.stringify({rows:rows.map(r=>({id:r.id,k:r.k,tx:r.tx,at:r.at,name:r.name,dur:r.dur,dtx:r.dtx,st:r.st,how:r.how||null,w0:r.w0==null?null:Math.round(r.w0)})),stack});
+function applySrv(j){
+  try{
+    const o=JSON.parse(j);if(!o||!Array.isArray(o.rows))return;
+    rows=o.rows.map(r=>({...r,how:r.how||null}));stack=Array.isArray(o.stack)?o.stack:[];
+    saveLocal();lastSig='';
+    if(mode==='edit')drawEdit();else drawRun(true);
+  }catch(e){log('共有の一覧を読めません')}
+}
+function pushState(){
+  clearTimeout(pushT);
+  if(!isOwner()||!adopted)return;
+  pushT=setTimeout(()=>{
+    if(!isOwner()||!adopted)return;
+    const j=pack();if(j===lastPush)return;lastPush=j;
+    set(R('cmdata'),{s:j,by:did,u:Math.round(now())})
+      .then(()=>{if(pushErr){pushErr=false;log('一覧の保存が戻りました')}})
+      .catch(e=>{lastPush='';if(!pushErr){pushErr=true;log('一覧をサーバーに保存できません: '+(e.code||e.message))}});
+  },300);
+}
+/* 操作権を持ったら1回だけ: サーバーに一覧があれば、それを引き継ぐ。なければ、この端末の一覧を保存する */
+function tryAdopt(){
+  if(!isOwner()||adopted||!srvReady)return;
+  adopted=true;
+  if(srv&&srv.s){applySrv(srv.s);lastPush=srv.s;log('サーバーの一覧を引き継ぎました')}
+  else{log('この端末の一覧をサーバーに保存します');pushState()}
+}
+onValue(R('cmdata'),s=>{
+  srv=s.val();srvReady=true;
+  if(!isOwner()){if(srv&&srv.s)applySrv(srv.s)}
+  else tryAdopt();
+},e=>log('一覧を読めません: '+(e.code||e.message)));
+
 load();
 const oaRow=()=>rows.find(r=>r.st==='oa');
 function remainOf(r){
@@ -407,15 +450,16 @@ function startRow(r,how,why,agoMs){
 const firstWait=k=>rows.find(r=>r.st==='wait'&&(!k||r.k===k));
 /* 次に検知で始まるQ。待機中の確定がQより上にあれば、その確定が消えるまで無し */
 function nextQ(){for(const r of rows){if(r.st!=='wait')continue;if(r.k==='F')return null;return r}return null}
-function skip(){lastEnd=null;const c=oaRow();if(c){endRow(c);log('スキップ: '+(c.name||''))}else{const w=firstWait();if(!w)return;w.st='done';stack.push(w.id);log('スキップ: '+(w.name||''))}save();lastSig=''}
+function skip(){if(!isOwner())return;lastEnd=null;const c=oaRow();if(c){endRow(c);log('スキップ: '+(c.name||''))}else{const w=firstWait();if(!w)return;w.st='done';stack.push(w.id);log('スキップ: '+(w.name||''))}save();lastSig=''}
 function back(){
+  if(!isOwner())return;
   lastEnd=null;
   const c=oaRow();
   if(c){c.st='wait';c.how=null;guardUntil=0;log('バック(取り消し): '+(c.name||''))}
   else{const id=stack.pop();const r=rows.find(x=>x.id===id);if(!r)return;r.st='wait';guardUntil=0;log('バック(戻した): '+(r.name||''))}
   save();lastSig='';
 }
-function nowStart(){const w=firstWait();if(!w)return;startRow(w,'W','手で開始')}
+function nowStart(){if(!isOwner())return;const w=firstWait();if(!w)return;startRow(w,'W','手で開始')}
 
 /* 0.1秒ごと: 終了の判定と、確定の開始 */
 function engine(){
@@ -427,7 +471,7 @@ function engine(){
   $('pts').textContent=t==null?'--':(T.running?'RUN':'STOP');
   $('pts').className='chip '+(t==null?'':'w');
   if(mode==='run'){
-    const c=oaRow();
+    const c=isOwner()?oaRow():null; /* 終わりの判定や確定の開始は、操作権を持つ端末だけ */
     if(c){
       if(c.how==='T'){
         if(t==null){}
@@ -436,7 +480,7 @@ function engine(){
       }else if(now()-c.w0>=(c.dur||0)*1000){const over=now()-(c.w0+(c.dur||0)*1000);endRow(c);markEnd(over);save()}
     }
     /* 確定: 走っているタイマーが、その時間を「またいだ」ときだけ開始(時間セットで飛び越えた場合は開始しない) */
-    if(t!=null&&T.running&&prevT!=null&&t>prevT&&t-prevT<3){
+    if(isOwner()&&t!=null&&T.running&&prevT!=null&&t>prevT&&t-prevT<3){
       const f=rows.filter(r=>r.k==='F'&&r.st==='wait'&&r.at!=null&&r.at>prevT&&r.at<=t).sort((a,b)=>a.at-b.at)[0];
       if(f)startRow(f,'T','時間');
     }
@@ -492,6 +536,7 @@ function drawEdit(){
 }
 const rowOf=el=>{const tr=el.closest('tr');return tr&&rows.find(r=>r.id===tr.dataset.id)};
 $('tb').addEventListener('input',e=>{
+  if(!isOwner()){drawEdit();return}
   const r=rowOf(e.target);if(!r)return;
   if(e.target.classList.contains('at')){r.tx=e.target.value;r.at=pT(r.tx);e.target.classList.toggle('bad',r.at==null)}
   else if(e.target.classList.contains('nm'))r.name=e.target.value;
@@ -505,6 +550,7 @@ $('tb').addEventListener('input',e=>{
 });
 /* 欄を出るとき: 読めた値は、きれいな表記に直す */
 $('tb').addEventListener('focusout',e=>{
+  if(!isOwner())return;
   const r=rowOf(e.target);if(!r)return;
   if(e.target.classList.contains('du')&&r.dur!=null&&zen(r.dtx)!==''){r.dtx=fD(r.dur);e.target.value=r.dtx;save()}
   else if(e.target.classList.contains('at')&&r.at!=null){r.tx=fmt(Math.round(r.at));e.target.value=r.tx;save()}
@@ -518,7 +564,7 @@ function nameStep(n,d){
 }
 const setDur=(r,sec)=>{r.dtx=sec==null?'':fD(sec);r.dur=calcDur(r)};
 $('tb').addEventListener('click',e=>{
-  const b=e.target.closest('button');if(!b)return;
+  const b=e.target.closest('button');if(!b||!isOwner())return;
   const r=rowOf(b);if(!r)return;const i=rows.indexOf(r);
   const c=b.classList;
   if(c.contains('kq')||c.contains('kf')){r.k=c.contains('kf')?'F':'Q';r.dur=calcDur(r)}
@@ -539,10 +585,11 @@ $('tb').addEventListener('click',e=>{
   }else return;
   drawEdit();save();lastSig='';
 });
-$('add').onclick=()=>{rows.push({id:nid(),k:'Q',tx:'',at:null,name:'',dur:null,dtx:'',st:'wait'});drawEdit();save();const n=document.querySelectorAll('#tb .nm');if(n.length)n[n.length-1].focus()};
-$('resetSt').onclick=()=>{if(!confirm('全部を「待機」に戻します。よろしいですか?'))return;rows.forEach(r=>{r.st='wait';r.how=null});stack=[];guardUntil=0;drawEdit();save();lastSig=''};
-$('clearAll').onclick=()=>{if(!confirm('一覧を全部消します。よろしいですか?'))return;rows=[];stack=[];drawEdit();save();lastSig=''};
+$('add').onclick=()=>{if(!isOwner())return;rows.push({id:nid(),k:'Q',tx:'',at:null,name:'',dur:null,dtx:'',st:'wait'});drawEdit();save();const n=document.querySelectorAll('#tb .nm');if(n.length)n[n.length-1].focus()};
+$('resetSt').onclick=()=>{if(!isOwner())return;if(!confirm('全部を「待機」に戻します。よろしいですか?'))return;rows.forEach(r=>{r.st='wait';r.how=null});stack=[];guardUntil=0;drawEdit();save();lastSig=''};
+$('clearAll').onclick=()=>{if(!isOwner())return;if(!confirm('一覧を全部消します。よろしいですか?'))return;rows=[];stack=[];drawEdit();save();lastSig=''};
 $('pasteAdd').onclick=()=>{
+  if(!isOwner())return;
   let n=0;
   $('paste').value.split(/\r?\n/).forEach(line=>{
     if(!line.trim())return;
@@ -564,7 +611,7 @@ $('bBack').onclick=back;$('bSkip').onclick=skip;$('bNow').onclick=nowStart;
 function fitRun(){const w=$('display').getBoundingClientRect().right-18;if(w>0)document.documentElement.style.setProperty('--runw',Math.round(w)+'px')}
 addEventListener('resize',fitRun);if(document.fonts)document.fonts.ready.then(fitRun);
 function setMode(m){
-  mode=m;document.body.className=m;
+  mode=m;document.body.classList.remove('edit','run');document.body.classList.add(m);
   $('mEdit').classList.toggle('on',m==='edit');$('mRun').classList.toggle('on',m==='run');
   prevT=null;lastSig='';fitRun();
   if(m==='edit')drawEdit();else drawRun(true);
@@ -631,6 +678,7 @@ function stopAudio(){
 $('abtn').onclick=()=>{listening?(stopAudio(),log('音を聞くのを止めました')):startAudio()};
 /* いま検知してよい状態か */
 function armed(){
+  if(!isOwner())return{ok:false,why:'操作権なし'};
   if(mode!=='run')return{ok:false,why:'入力画面'};
   if(oaRow())return{ok:false,why:'OA中'};
   if(performance.now()<guardUntil)return{ok:false,why:'終了直後'};
@@ -651,6 +699,7 @@ function onset(agoMs){
    「音がある」は 0.1秒以上続いた音。 */
 function contin(t,heard){
   if(!lastEnd)return;
+  if(!isOwner()){lastEnd=null;return}
   if(mode!=='run'||oaRow()){lastEnd=null;return}
   const el=t-lastEnd.perf,g=S.guard*1000,e=Math.max(S.fb*1000,g+500);
   if(el<g){if(heard)lastEnd.s1=true;return}
