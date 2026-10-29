@@ -32,6 +32,11 @@ body{margin:0;font-family:Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,
 .row .c4{text-align:right;min-width:56px;overflow:visible}
 .row.late{opacity:.35}
 .row.oa{background:rgba(255,255,255,.17);color:#fff;height:56px}
+/* 終わったイベント(直近2行)は暗く残す */
+.row.done{opacity:.35}
+/* 確定の OA中: 目印も大きな数字も出さない。グレーで、今どこにいるかだけわかるように */
+.row.foa{color:#8a95a5;background:rgba(255,255,255,.06)}
+.row.foa .c2{color:#8a95a5}
 .row.oa>div{line-height:56px}
 .row.oa .c4{font-size:42px;font-weight:700}
 .badge{display:inline-block;vertical-align:middle;background:#dc2626;color:#fff;font-size:12px;font-weight:700;line-height:18px;padding:0 3px;border-radius:4px;letter-spacing:.03em}
@@ -184,8 +189,17 @@ onValue(ref(db,'.info/connected'),s=>{if(s.val()){linked(true);resync(true)}else
 onValue(ref(db,'.info/serverTimeOffset'),s=>{off=s.val()});
 onValue(R('timer'),s=>{const v=s.val()||{};T={ok:true,running:!!v.running,base:v.base||0,value:v.value||0};lastSig=''});
 
-/* ===== 進行データ(cm.html が書いたものを読む) ===== */
-let rows=[],got=false,lastSig='';
+/* ===== 進行データ(cm.html が書いたものを読む) =====
+   全部の行(終わったものも含む)は rooms/<room>/cmdata にある。それを使う。
+   cmdata がまだ無いとき(古い cm.html など)は、これまでどおり rooms/<room>/cm を使う */
+let rows=[],rowsAll=null,got=false,lastSig='';
+onValue(R('cmdata'),s=>{
+  const v=s.val();let o=null;
+  try{o=v&&typeof v.s==='string'?JSON.parse(v.s):null}catch(e){}
+  rowsAll=o&&Array.isArray(o.rows)?o.rows.filter(r=>r&&typeof r==='object'):null;
+  if(rowsAll)got=true;
+  lastSig='';
+},()=>{});
 onValue(R('cm'),s=>{
   const v=s.val();got=true;
   const rs=v&&v.rows?v.rows:{};
@@ -198,7 +212,7 @@ function remainOf(r){
   if(r.how==='W'&&r.w0!=null)return d-(now()-r.w0)/1000;
   return d;
 }
-const late=(r,t)=>r.k==='F'&&r.st!=='oa'&&(r.at==null||(t!=null&&T.running&&r.at<t-1));
+const late=(r,t)=>r.k==='F'&&r.st==='wait'&&(r.at==null||(t!=null&&T.running&&r.at<t-1));
 
 /* ===== 描く ===== */
 let lastBlink=-1;
@@ -214,18 +228,19 @@ function draw(){
   drawList(t);
 }
 function drawList(t){
-  const vis=rows.slice(0,10);
-  const sig=vis.map(r=>r.k+r.st+(r.st==='oa'?Math.ceil(Math.max(0,remainOf(r))):'')+(late(r,t)?'L':'')).join()+'|'+got;
+  /* 終わった行の直近2つ + まだ終わっていない行(最大10) */
+  const vis=rowsAll?[...rowsAll.filter(r=>r.st==='done').slice(-2),...rowsAll.filter(r=>r.st!=='done').slice(0,10)]:rows.slice(0,10);
+  const sig=vis.map(r=>r.k+r.st+(r.name||'')+r.dur+r.at+(r.st==='oa'?Math.ceil(Math.max(0,remainOf(r))):'')+(late(r,t)?'L':'')).join()+'|'+got;
   if(sig===lastSig)return;
   lastSig=sig;
   list.textContent='';
   if(!vis.length){if(got){const e=document.createElement('div');e.className='empty';e.textContent='--';list.appendChild(e)}return}
   vis.forEach(r=>{
-    const oa=r.st==='oa',d=document.createElement('div');
-    d.className='row'+(oa?' oa':'')+(late(r,t)?' late':'');
+    const oa=r.st==='oa',qoa=oa&&r.k!=='F',d=document.createElement('div');
+    d.className='row'+(qoa?' oa':'')+(oa&&r.k==='F'?' foa':'')+(r.st==='done'?' done':'')+(late(r,t)?' late':'');
     const mk=(c,tx)=>{const x=document.createElement('div');x.className=c;if(tx!=null)x.textContent=tx;d.appendChild(x);return x};
     const c1=mk('c1');
-    if(oa){const b=document.createElement('span');b.className='badge';b.textContent='OA';c1.appendChild(b)}
+    if(qoa){const b=document.createElement('span');b.className='badge';b.textContent='OA';c1.appendChild(b)}
     mk('c2'+(r.k==='Q'?' q':''),r.k==='Q'?'Q':(r.at==null?'--:--:--':fmt(Math.round(r.at))));
     mk('c3',r.name||'(名前なし)');
     mk('c4',r.dur==null?'--':(r.dur===0&&r.k==='F')?'':fD(oa?Math.max(0,Math.ceil(remainOf(r))):r.dur));
