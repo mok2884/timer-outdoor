@@ -102,6 +102,11 @@ body.ro #tb,body.ro .bar,body.ro #paste,body.ro #pasteAdd,body.ro #ctrls{pointer
 .row.oa>div{line-height:54px}
 .row.oa .c1{justify-self:start;align-self:center;height:28px;background:#dc2626;color:#fff;border-radius:8px;font-weight:700;padding:0 6px;line-height:28px;letter-spacing:.04em}
 .row.oa .c4{font-size:42px;font-weight:700}
+/* 確定の OA中: OA の目印は出さない。残りの数字は少しだけ大きく。時刻はもう過ぎているので暗く(cmview と同じ) */
+.row.foa{background:rgba(255,255,255,.17);color:#fff;height:56px}
+.row.foa>div{line-height:54px}
+.row.foa .c2{color:#64748b}
+.row.foa .c4{font-size:28px;font-weight:700}
 .empty{color:#64748b;font-size:16px;padding:24px 0;text-align:center}
 .done-n{color:#475569;font-size:13px;padding-left:6px}
 #ctrls{display:flex;gap:12px;padding:10px 0}
@@ -509,10 +514,10 @@ function drawRun(force){
   if(doneN){const d=document.createElement('div');d.className='done-n';d.textContent='終了 '+doneN+' 件';list.appendChild(d)}
   if(!vis.length){const e=document.createElement('div');e.className='empty';e.textContent=rows.length?'すべて終了しました':'進行データがありません(「入力」で追加)';list.appendChild(e)}
   vis.slice(0,12).forEach(r=>{
-    const oa=r.st==='oa',d=document.createElement('div');
-    d.className='row'+(oa?' oa':'')+(late(r,t)?' late':'');
+    const oa=r.st==='oa',qoa=oa&&r.k!=='F',d=document.createElement('div');
+    d.className='row'+(qoa?' oa':'')+(oa&&r.k==='F'?' foa':'')+(late(r,t)?' late':'');
     const mk=(c,tx)=>{const x=document.createElement('div');x.className=c;x.textContent=tx;d.appendChild(x);return x};
-    mk('c1',oa?'OA':'');
+    mk('c1',qoa?'OA':'');
     mk('c2'+(r.k==='Q'?' q':''),r.k==='Q'?'Q':(r.at==null?'--:--:--':fmt(Math.round(r.at))));
     mk('c3',r.name||'(名前なし)');
     mk('c4',r.dur==null?'--':(r.dur===0&&r.k==='F')?'':fD(oa?Math.max(0,Math.ceil(remainOf(r))):r.dur));
