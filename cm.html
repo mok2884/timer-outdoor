@@ -47,7 +47,14 @@ body.run #runView{display:flex}
 table{border-collapse:collapse;font-size:14px}
 th{font-size:12px;color:#94a3b8;text-align:left;padding:2px 6px;font-weight:600;background:#111827;border:1px solid #2a3547;position:sticky;top:0;z-index:1;white-space:nowrap}
 td{padding:0;border:1px solid #2a3547;height:24px;white-space:nowrap}
-td.no{color:#64748b;width:30px;text-align:right;padding:0 6px;background:#111827;font-size:12px}
+td.no{color:#64748b;width:44px;text-align:right;padding:0 6px 0 2px;background:#111827;font-size:12px}
+/* 行の並べ替え: 左端の ⋮⋮ をつかんで上下に動かす */
+td.no .hd{float:left;cursor:grab;touch-action:none;color:#94a3b8;padding:0 6px 0 4px;font-size:14px;letter-spacing:-3px;user-select:none;-webkit-user-select:none}
+tr.st-oa td.no .hd{opacity:.2;cursor:not-allowed}
+tr.drag td{background:#1e293b}
+tr.drag{opacity:.6}
+tr.dropB td{box-shadow:inset 0 2px 0 #38bdf8}
+tr.dropA td{box-shadow:inset 0 -2px 0 #38bdf8}
 td input,td select{border:none;border-radius:0;background:transparent;padding:2px 6px;font-size:14px;height:23px;margin:0;vertical-align:middle}
 td input:focus,td select:focus{outline:1px solid #38bdf8;outline-offset:-1px;background:#0b1220}
 input.bad{background:#4a1414}
@@ -521,8 +528,8 @@ function drawEdit(){
   const tb=$('tb');tb.textContent='';
   rows.forEach((r,i)=>{
     const tr=document.createElement('tr');tr.dataset.id=r.id;tr.className='st-'+r.st;
-    tr.innerHTML='<td class="no"></td><td class="kc"><button class="ib kq">Q</button><button class="ib kf">確定</button></td><td><input class="at" placeholder="hh:mm:ss" autocomplete="off"></td><td class="nmc"><button class="ib nc">クリア</button><input class="nm" placeholder="CMの名前" autocomplete="off"><button class="ib np">PT</button><button class="ib nv">VIVA</button><button class="ib ni">+</button><button class="ib nd">−</button><button class="ib nj">時報</button></td><td class="duc"><input class="du" inputmode="numeric" placeholder="例 120" autocomplete="off"><span class="dv"></span><button class="ib d20">20</button><button class="ib dc">クリア</button></td><td class="ops"><button class="up">↑</button><button class="dn">↓</button><button class="del">✕</button></td><td class="last"><button class="stb"></button></td>';
-    tr.querySelector('.no').textContent=i+1;
+    tr.innerHTML='<td class="no"></td><td class="kc"><button class="ib kq">Q</button><button class="ib kf">確定</button></td><td><input class="at" placeholder="hh:mm:ss" autocomplete="off"></td><td class="nmc"><button class="ib nc">クリア</button><input class="nm" placeholder="CMの名前" autocomplete="off"><button class="ib np">PT</button><button class="ib nv">VIVA</button><button class="ib ni">+</button><button class="ib nd">−</button><button class="ib nj">時報</button></td><td class="duc"><input class="du" inputmode="numeric" placeholder="例 120" autocomplete="off"><span class="dv"></span><button class="ib d20">20</button><button class="ib dc">クリア</button></td><td class="ops"><button class="del">✕</button></td><td class="last"><button class="stb"></button></td>';
+    tr.querySelector('.no').innerHTML='<span class="hd">⋮⋮</span>'+(i+1);
     tr.querySelector('.kq').classList.toggle('on',r.k==='Q');tr.querySelector('.kf').classList.toggle('on',r.k==='F');
     const at=tr.querySelector('.at');at.value=r.tx||'';at.disabled=r.k!=='F';
     if(r.k==='F'&&r.at==null)at.classList.add('bad');
@@ -584,6 +591,41 @@ $('tb').addEventListener('click',e=>{
   }else return;
   drawEdit();save();lastSig='';
 });
+/* ===== 行の並べ替え(左端の ⋮⋮ をつかんで上下に動かす) =====
+   OA中の行と、操作権のない端末では動かせない */
+let drag=null;
+function dragTarget(y){
+  const trs=[...$('tb').children];
+  for(let i=0;i<trs.length;i++){const b=trs[i].getBoundingClientRect();if(y<b.top+b.height/2)return i}
+  return trs.length;
+}
+function markTo(to){const trs=[...$('tb').children];trs.forEach((t,i)=>{t.classList.toggle('dropB',i===to);t.classList.toggle('dropA',to===trs.length&&i===trs.length-1)})}
+/* 端まで持っていくと、自動でスクロールする */
+function dragLoop(){
+  if(!drag)return;
+  const v=$('editView'),b=v.getBoundingClientRect(),m=40;
+  if(drag.y<b.top+m)v.scrollTop-=8;else if(drag.y>b.bottom-m)v.scrollTop+=8;
+  drag.to=dragTarget(drag.y);markTo(drag.to);
+  drag.raf=requestAnimationFrame(dragLoop);
+}
+function endDrag(ok){
+  if(!drag)return;
+  const {r,to}=drag;cancelAnimationFrame(drag.raf);drag=null;
+  if(ok&&isOwner()){const from=rows.indexOf(r);let t=to;if(t>from)t--;if(from>=0&&t!==from){rows.splice(from,1);rows.splice(t,0,r);save();lastSig=''}}
+  drawEdit();
+}
+$('tb').addEventListener('pointerdown',e=>{
+  const h=e.target.closest('.hd');if(!h||!isOwner())return;
+  const r=rowOf(h);if(!r||r.st==='oa')return;
+  e.preventDefault();
+  h.closest('tr').classList.add('drag');
+  try{h.setPointerCapture(e.pointerId)}catch(_){}
+  drag={r,to:rows.indexOf(r),y:e.clientY,raf:null};
+  dragLoop();
+});
+$('tb').addEventListener('pointermove',e=>{if(drag)drag.y=e.clientY});
+$('tb').addEventListener('pointerup',()=>endDrag(true));
+$('tb').addEventListener('pointercancel',()=>endDrag(false));
 $('add').onclick=()=>{if(!isOwner())return;rows.push({id:nid(),k:'Q',tx:'',at:null,name:'',dur:null,dtx:'',st:'wait'});drawEdit();save();const n=document.querySelectorAll('#tb .nm');if(n.length)n[n.length-1].focus()};
 $('resetSt').onclick=()=>{if(!isOwner())return;if(!confirm('全部を「待機」に戻します。よろしいですか?'))return;rows.forEach(r=>{r.st='wait';r.how=null});stack=[];guardUntil=0;drawEdit();save();lastSig=''};
 $('clearAll').onclick=()=>{if(!isOwner())return;if(!confirm('一覧を全部消します。よろしいですか?'))return;rows=[];stack=[];drawEdit();save();lastSig=''};
